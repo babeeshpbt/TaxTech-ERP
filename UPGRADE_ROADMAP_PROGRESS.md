@@ -104,6 +104,7 @@ Phase 7: Packaging, Verification & Production Build
 | **Add Party Area Input Clickability & Highlight** | **Completed** | Modal stacking bug resolved; high-contrast focus outline and label highlights implemented. |
 | **Dark Mode & Light Mode Theme Engine** | **Completed** | Enterprise CSS variable palette with smooth top-bar Sun/Moon toggle and persistence. |
 | **Automated Integration Test Suite** | **Completed** | Electron `--test` runner with 10 automated checks passing (exit code 0). |
+| **Windows Portable Executable (.exe) & Setup Installer** | **Completed** | Single-file portable standalone (`TaxTech-ERP-Portable-1.0.0.exe`) and NSIS installer (`TaxTech ERP Setup 1.0.0.exe`) compiled into `dist/`. |
 | **Phase 3: Double-Entry Accounting Engine & Vouchers** | **Next** | Multi-voucher balance verification, debit/credit notes, day book. |
 | **Phase 4: Multi-Company, Warehouses & Inventory** | Planned | Godown stock transfers, batch tracking, reorder levels. |
 | **Phase 5: Indian Statutory Compliance (GST, TDS, TCS)** | Planned | GSTR-1, GSTR-3B, GSTR-2B reconciliation, Section 194 TDS. |
