@@ -1,0 +1,4 @@
+
+name it tax tech erp and remove tally erp in all places 
+
+item select in purchase and sales  there is search option needed 

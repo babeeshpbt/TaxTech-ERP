@@ -1,0 +1,19 @@
+{
+  "name": "taxtech-erp",
+  "version": "1.0.0",
+  "description": "TaxTech ERP - Enterprise Business Management Suite with Indian GST Billing, Inventory & Double-Entry Accounting",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "electron . --test"
+  },
+  "devDependencies": {
+    "electron": "^27.3.10"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.15.0",
+    "uuid": "^9.0.0"
+  }
+}

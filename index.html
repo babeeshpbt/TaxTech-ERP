@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaxTech ERP - Enterprise Business Management Suite</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>TaxTech ERP</h1>
+                <p class="version">Enterprise Edition v3.0</p>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="dashboard">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-view="invoices">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    <span>Sales Invoices</span>
+                </button>
+                <button class="nav-item" data-view="purchases">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <path d="M16 10a4 4 0 0 1-8 0"/>
+                    </svg>
+                    <span>Purchases (Inward)</span>
+                </button>
+                <button class="nav-item" data-view="products">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                    <span>Items & Services</span>
+                </button>
+                <button class="nav-item" data-view="stockRegister">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"/>
+                        <line x1="8" y1="12" x2="21" y2="12"/>
+                        <line x1="8" y1="18" x2="21" y2="18"/>
+                        <line x1="3" y1="6" x2="3.01" y2="6"/>
+                        <line x1="3" y1="12" x2="3.01" y2="12"/>
+                        <line x1="3" y1="18" x2="3.01" y2="18"/>
+                    </svg>
+                    <span>Stock Register</span>
+                </button>
+                <button class="nav-item" data-view="clients">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span>Parties (Customers & Suppliers)</span>
+                </button>
+                <button class="nav-item" data-view="vouchers">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    <span>Receipt & Payment Vouchers</span>
+                </button>
+                <button class="nav-item" data-view="cashBank">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="6" width="20" height="12" rx="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <path d="M6 12h.01M18 12h.01"/>
+                    </svg>
+                    <span>Cash Book & Bank Book</span>
+                </button>
+                <button class="nav-item" data-view="ledgers">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                    <span>Accounts & Ledgers (28 Groups)</span>
+                </button>
+                <button class="nav-item" data-view="financials">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    <span>Financial Statements</span>
+                </button>
+                <button class="nav-item" data-view="settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    <span>Settings & Backup</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="mainContent">
+            <header class="top-bar">
+                <button class="menu-toggle" id="menuToggle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <div class="top-bar-title">
+                    <h2 id="viewTitle">Dashboard</h2>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-icon theme-toggle-btn" id="themeToggleBtn" title="Toggle Dark/Light Mode" aria-label="Toggle Dark/Light Mode">
+                        <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                    <button class="btn btn-secondary" id="topVoucherBtn">+ Voucher</button>
+                    <button class="btn btn-secondary" id="topPurchaseBtn">+ Purchase</button>
+                    <button class="btn btn-primary" id="globalNewInvoiceBtn">+ Sales Invoice</button>
+                </div>
+            </header>
+
+            <!-- 1. DASHBOARD VIEW -->
+            <section class="view active" id="dashboardView">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalInvoices">0</span>
+                            <span class="stat-label">Sales Invoices</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"/>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalRevenue">₹0.00</span>
+                            <span class="stat-label">Sales Turnover</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalPurchasesVal">₹0.00</span>
+                            <span class="stat-label">Total Purchases</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalStockVal">₹0.00</span>
+                            <span class="stat-label">Closing Stock Value</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Recent Sales Invoices</h3>
+                            <button class="btn btn-sm btn-secondary" id="viewAllInvoicesBtn">View All</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table" id="recentInvoicesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice No.</th>
+                                        <th>Date</th>
+                                        <th>Client</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Accounting & ERP Quick Access</h3>
+                        </div>
+                        <div class="quick-actions">
+                            <button class="quick-action-btn" data-action="newInvoice">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                <span>Sales Invoice</span>
+                            </button>
+                            <button class="quick-action-btn" data-action="newPurchase">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg>
+                                <span>Purchase Entry</span>
+                            </button>
+                            <button class="quick-action-btn" data-action="newVoucher">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+                                <span>Record Voucher</span>
+                            </button>
+                            <button class="quick-action-btn" data-action="newProduct">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                <span>Item / Service</span>
+                            </button>
+                            <button class="quick-action-btn" data-action="stockRegister">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/></svg>
+                                <span>Stock Register</span>
+                            </button>
+                            <button class="quick-action-btn" data-action="financials">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/></svg>
+                                <span>P&L & Bal Sheet</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. SALES INVOICES VIEW -->
+            <section class="view" id="invoicesView">
+                <div class="view-header">
+                    <h2>Sales Invoices</h2>
+                    <div class="view-actions">
+                        <input type="text" class="search-input" id="invoiceSearch" placeholder="Search invoices...">
+                        <button class="btn btn-secondary" id="exportInvoicesExcelBtn">Export to Excel</button>
+                        <button class="btn btn-primary" id="newInvoiceBtn">+ Create Invoice</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table" id="invoicesTable">
+                            <thead>
+                                <tr>
+                                    <th>Invoice No.</th>
+                                    <th>Date</th>
+                                    <th>Customer</th>
+                                    <th>GSTIN</th>
+                                    <th>Place of Supply</th>
+                                    <th>Taxable</th>
+                                    <th>Total Tax</th>
+                                    <th>Grand Total</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. PURCHASES VIEW -->
+            <section class="view" id="purchasesView">
+                <div class="view-header">
+                    <h2>Purchases (Inward Bills)</h2>
+                    <div class="view-actions">
+                        <input type="text" class="search-input" id="purchaseSearch" placeholder="Search purchases...">
+                        <button class="btn btn-secondary" id="exportPurchasesExcelBtn">Export to Excel</button>
+                        <button class="btn btn-primary" id="newPurchaseBtn">+ Record Purchase</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table" id="purchasesTable">
+                            <thead>
+                                <tr>
+                                    <th>Purchase No.</th>
+                                    <th>Date</th>
+                                    <th>Supplier</th>
+                                    <th>Supplier Bill No</th>
+                                    <th>Supplier GSTIN</th>
+                                    <th>Taxable</th>
+                                    <th>Tax (Input)</th>
+                                    <th>Grand Total</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. PRODUCTS & SERVICES VIEW -->
+            <section class="view" id="productsView">
+                <div class="view-header">
+                    <h2>Items & Services Master</h2>
+                    <div class="view-actions">
+                        <div class="tab-pill-group" id="productFilterTabs">
+                            <button class="pill-btn active" data-filter="all">All</button>
+                            <button class="pill-btn" data-filter="Goods">Goods</button>
+                            <button class="pill-btn" data-filter="Service">Services</button>
+                        </div>
+                        <input type="text" class="search-input" id="productSearch" placeholder="Search items & services...">
+                        <button class="btn btn-secondary" id="exportProductsExcelBtn">Export to Excel</button>
+                        <button class="btn btn-primary" id="newProductBtn">+ Add Item / Service</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table" id="productsTable">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Item / Service Name</th>
+                                    <th>HSN / SAC</th>
+                                    <th>Unit</th>
+                                    <th>GST Rate</th>
+                                    <th>Sale Price</th>
+                                    <th>Purchase Price</th>
+                                    <th>Opening Stock</th>
+                                    <th>Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. STOCK REGISTER VIEW -->
+            <section class="view" id="stockRegisterView">
+                <div class="view-header">
+                    <h2>Stock Register (Inventory Valuation)</h2>
+                    <div class="view-actions">
+                        <input type="text" class="search-input" id="stockSearch" placeholder="Search stock items...">
+                        <button class="btn btn-secondary" id="exportStockExcelBtn">Export to Excel</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-value" id="stockTotalItems">0</span>
+                            <span class="stat-label">Total Goods Tracked</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-value" id="stockInStockItems">0</span>
+                            <span class="stat-label">Items In Stock</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-value" id="stockLowStockItems">0</span>
+                            <span class="stat-label">Low / Out of Stock</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-value" id="stockTotalValue">₹0.00</span>
+                            <span class="stat-label">Total Closing Valuation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table" id="stockRegisterTable">
+                            <thead>
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th>HSN</th>
+                                    <th>Unit</th>
+                                    <th>Opening Qty</th>
+                                    <th>Inward (Purchases)</th>
+                                    <th>Outward (Sales)</th>
+                                    <th>Closing Qty</th>
+                                    <th>Avg Cost / Rate</th>
+                                    <th>Closing Valuation (₹)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. PARTIES (CLIENTS / SUPPLIERS) VIEW -->
+            <section class="view" id="clientsView">
+                <div class="view-header">
+                    <h2>Parties Master (Debtors & Creditors)</h2>
+                    <div class="view-actions">
+                        <div class="tab-pill-group" id="partyFilterTabs">
+                            <button class="pill-btn active" data-filter="all">All</button>
+                            <button class="pill-btn" data-filter="Customer">Customers (Debtors)</button>
+                            <button class="pill-btn" data-filter="Supplier">Suppliers (Creditors)</button>
+                        </div>
+                        <input type="text" class="search-input" id="clientSearch" placeholder="Search parties...">
+                        <button class="btn btn-secondary" id="exportClientsExcelBtn">Export to Excel</button>
+                        <button class="btn btn-primary" id="newClientBtn">+ Add Party</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table" id="clientsTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Party Type</th>
+                                    <th>GSTIN</th>
+                                    <th>PAN</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>Phone</th>
+                                    <th>Opening Balance</th>
+                                    <th>Credit Limit</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. VOUCHERS VIEW (RECEIPT / PAYMENT / CONTRA / JOURNAL) -->
+            <section class="view" id="vouchersView">
+                <div class="view-header">
+                    <h2>Receipt & Payment Vouchers</h2>
+                    <div class="view-actions">
+                        <div class="tab-pill-group" id="voucherFilterTabs">
+                            <button class="pill-btn active" data-filter="all">All</button>
+                            <button class="pill-btn" data-filter="Receipt">Receipts</button>
+                            <button class="pill-btn" data-filter="Payment">Payments</button>
+                            <button class="pill-btn" data-filter="Contra">Contra</button>
+                            <button class="pill-btn" data-filter="Journal">Journal</button>
+                        </div>
+                        <input type="text" class="search-input" id="voucherSearch" placeholder="Search vouchers...">
+                        <button class="btn btn-secondary" id="exportVouchersExcelBtn">Export to Excel</button>
+                        <button class="btn btn-primary" id="newVoucherBtn">+ Record Voucher</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table" id="vouchersTable">
+                            <thead>
+                                <tr>
+                                    <th>Voucher No.</th>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Mode</th>
+                                    <th>Debit Ledger</th>
+                                    <th>Credit Ledger</th>
+                                    <th>Amount (₹)</th>
+                                    <th>Ref / Cheque</th>
+                                    <th>Narration</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 8. CASH BOOK & BANK BOOK VIEW -->
+            <section class="view" id="cashBankView">
+                <div class="view-header">
+                    <h2>Cash Book & Bank Book Register</h2>
+                    <div class="view-actions">
+                        <div class="tab-pill-group" id="cashBankTabs">
+                            <button class="pill-btn active" data-book="cash">Cash Book</button>
+                            <button class="pill-btn" data-book="bank">Bank Book</button>
+                        </div>
+                        <button class="btn btn-secondary" id="exportCashBankExcelBtn">Export Register</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-value" id="cbOpeningBalance">₹0.00</span>
+                            <span class="stat-label">Opening Balance</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-value" id="cbTotalReceipts">₹0.00</span>
+                            <span class="stat-label">Total Receipts (Dr)</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-value" id="cbTotalPayments">₹0.00</span>
+                            <span class="stat-label">Total Payments (Cr)</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-value" id="cbClosingBalance">₹0.00</span>
+                            <span class="stat-label">Closing Balance</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table" id="cashBankTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Voucher No.</th>
+                                    <th>Type</th>
+                                    <th>Particulars</th>
+                                    <th>Receipts / Debit (₹)</th>
+                                    <th>Payments / Credit (₹)</th>
+                                    <th>Running Balance (₹)</th>
+                                    <th>Narration</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 9. ACCOUNTS & LEDGERS (STANDARD 28 GROUPS) VIEW -->
+            <section class="view" id="ledgersView">
+                <div class="view-header">
+                    <h2>Accounting Masters & Ledgers</h2>
+                    <div class="view-actions">
+                        <div class="tab-pill-group" id="ledgerMasterTabs">
+                            <button class="pill-btn active" data-tab="ledgers">Ledgers List</button>
+                            <button class="pill-btn" data-tab="groups">28 Standard Groups</button>
+                        </div>
+                        <button class="btn btn-primary" id="newLedgerBtn">+ Create Ledger</button>
+                    </div>
+                </div>
+
+                <!-- Sub-view: Ledgers -->
+                <div class="card" id="ledgersSubView">
+                    <div class="table-container">
+                        <table class="data-table" id="ledgersTable">
+                            <thead>
+                                <tr>
+                                    <th>Ledger Name</th>
+                                    <th>Standard Group Name</th>
+                                    <th>Nature</th>
+                                    <th>Opening Balance (₹)</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-view: 28 Groups -->
+                <div class="card" id="groupsSubView" style="display: none;">
+                    <div class="table-container">
+                        <table class="data-table" id="groupsTable">
+                            <thead>
+                                <tr>
+                                    <th>Group Name</th>
+                                    <th>Sub-group of (Parent)</th>
+                                    <th>Nature of Group</th>
+                                    <th>System Default</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 10. FINANCIAL STATEMENTS VIEW -->
+            <section class="view" id="financialsView">
+                <div class="view-header">
+                    <h2>Financial Statements & Final Accounts</h2>
+                    <div class="view-actions">
+                        <div class="tab-pill-group" id="financialTabs">
+                            <button class="pill-btn active" data-sheet="trialBalance">Trial Balance</button>
+                            <button class="pill-btn" data-sheet="tradingAccount">Trading Account</button>
+                            <button class="pill-btn" data-sheet="profitLoss">Profit & Loss Account</button>
+                            <button class="pill-btn" data-sheet="balanceSheet">Balance Sheet</button>
+                        </div>
+                        <button class="btn btn-secondary" id="refreshFinancialsBtn">Refresh Reports</button>
+                    </div>
+                </div>
+
+                <!-- 10.1 Trial Balance -->
+                <div class="card financial-card" id="trialBalanceView">
+                    <div class="card-header">
+                        <h3>Trial Balance (Closing Balances)</h3>
+                        <span class="badge" id="tbStatusBadge">Balanced</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="trialBalanceTable">
+                            <thead>
+                                <tr>
+                                    <th>Particulars / Ledger Name</th>
+                                    <th>Accounting Group</th>
+                                    <th>Nature</th>
+                                    <th style="text-align: right;">Debit (₹)</th>
+                                    <th style="text-align: right;">Credit (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                            <tfoot>
+                                <tr style="font-weight: 700; background: #e2e8f0;">
+                                    <td colspan="3">Grand Total</td>
+                                    <td style="text-align: right;" id="tbTotalDr">₹0.00</td>
+                                    <td style="text-align: right;" id="tbTotalCr">₹0.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 10.2 Trading Account -->
+                <div class="card financial-card" id="tradingAccountView" style="display: none;">
+                    <div class="card-header">
+                        <h3>Trading Account (for the financial year)</h3>
+                        <span class="badge" id="tradingProfitBadge">Gross Profit</span>
+                    </div>
+                    <div class="two-column-financial">
+                        <div class="col-side left-side">
+                            <h4>Debit (Cost of Goods Sold & Direct Expenses)</h4>
+                            <div class="statement-row"><span>Opening Stock</span><strong id="trOpeningStock">₹0.00</strong></div>
+                            <div class="statement-row"><span>Purchases</span><strong id="trPurchases">₹0.00</strong></div>
+                            <div id="trDirectExpensesList"></div>
+                            <div class="statement-row profit-row" id="trGrossProfitRow"><span>Gross Profit c/d</span><strong id="trGrossProfit">₹0.00</strong></div>
+                            <div class="statement-total"><span>Total Debit</span><strong id="trTotalDebit">₹0.00</strong></div>
+                        </div>
+                        <div class="col-side right-side">
+                            <h4>Credit (Revenue & Direct Incomes)</h4>
+                            <div class="statement-row"><span>Sales Revenue</span><strong id="trSales">₹0.00</strong></div>
+                            <div class="statement-row"><span>Closing Stock</span><strong id="trClosingStock">₹0.00</strong></div>
+                            <div id="trDirectIncomesList"></div>
+                            <div class="statement-row loss-row" id="trGrossLossRow" style="display: none;"><span>Gross Loss c/d</span><strong id="trGrossLoss">₹0.00</strong></div>
+                            <div class="statement-total"><span>Total Credit</span><strong id="trTotalCredit">₹0.00</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 10.3 Profit & Loss Account -->
+                <div class="card financial-card" id="profitLossView" style="display: none;">
+                    <div class="card-header">
+                        <h3>Profit & Loss Account</h3>
+                        <span class="badge" id="plNetProfitBadge">Net Profit</span>
+                    </div>
+                    <div class="two-column-financial">
+                        <div class="col-side left-side">
+                            <h4>Debit (Indirect Expenses)</h4>
+                            <div class="statement-row loss-row" id="plGrossLossRow" style="display: none;"><span>Gross Loss b/d</span><strong id="plGrossLoss">₹0.00</strong></div>
+                            <div id="plIndirectExpensesList"></div>
+                            <div class="statement-row profit-row" id="plNetProfitRow"><span>Net Profit c/d (Transferred to Capital)</span><strong id="plNetProfit">₹0.00</strong></div>
+                            <div class="statement-total"><span>Total Expenses</span><strong id="plTotalDebit">₹0.00</strong></div>
+                        </div>
+                        <div class="col-side right-side">
+                            <h4>Credit (Gross Profit & Indirect Incomes)</h4>
+                            <div class="statement-row profit-row" id="plGrossProfitRow"><span>Gross Profit b/d</span><strong id="plGrossProfit">₹0.00</strong></div>
+                            <div id="plIndirectIncomesList"></div>
+                            <div class="statement-row loss-row" id="plNetLossRow" style="display: none;"><span>Net Loss c/d</span><strong id="plNetLoss">₹0.00</strong></div>
+                            <div class="statement-total"><span>Total Incomes</span><strong id="plTotalCredit">₹0.00</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 10.4 Balance Sheet -->
+                <div class="card financial-card" id="balanceSheetView" style="display: none;">
+                    <div class="card-header">
+                        <h3>Balance Sheet (as on date)</h3>
+                        <span class="badge green" id="bsBalancedBadge">Balanced</span>
+                    </div>
+                    <div class="two-column-financial">
+                        <div class="col-side left-side">
+                            <h4>Liabilities & Capital</h4>
+                            <div id="bsLiabilitiesList"></div>
+                            <div class="statement-total"><span>Total Liabilities</span><strong id="bsTotalLiabilities">₹0.00</strong></div>
+                        </div>
+                        <div class="col-side right-side">
+                            <h4>Assets (Fixed & Current)</h4>
+                            <div id="bsAssetsList"></div>
+                            <div class="statement-total"><span>Total Assets</span><strong id="bsTotalAssets">₹0.00</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 11. SETTINGS & BACKUP VIEW -->
+            <section class="view" id="settingsView">
+                <div class="view-header">
+                    <h2>Settings & Database Management</h2>
+                </div>
+                <div class="settings-grid">
+                    <div class="card settings-card">
+                        <h3>Company Information</h3>
+                        <form id="companySettingsForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Company Name *</label>
+                                    <input type="text" name="companyName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>GSTIN *</label>
+                                    <input type="text" name="companyGstin" placeholder="29ABCDE1234F1Z5" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>PAN</label>
+                                    <input type="text" name="companyPan" placeholder="ABCDE1234F">
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone</label>
+                                    <input type="text" name="companyPhone" placeholder="+91-9876543210">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" name="companyEmail" placeholder="info@company.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Website</label>
+                                    <input type="text" name="companyWebsite" placeholder="www.company.com">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Address Line 1</label>
+                                <input type="text" name="companyAddress1">
+                            </div>
+                            <div class="form-group">
+                                <label>Address Line 2</label>
+                                <input type="text" name="companyAddress2">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>City</label>
+                                    <input type="text" name="companyCity">
+                                </div>
+                                <div class="form-group">
+                                    <label>State</label>
+                                    <input type="text" name="companyState">
+                                </div>
+                                <div class="form-group">
+                                    <label>State Code</label>
+                                    <input type="text" name="companyStateCode" placeholder="29">
+                                </div>
+                                <div class="form-group">
+                                    <label>Pincode</label>
+                                    <input type="text" name="companyPincode">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card settings-card">
+                        <h3>Bank Details</h3>
+                        <form id="bankSettingsForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Bank Name</label>
+                                    <input type="text" name="bankName">
+                                </div>
+                                <div class="form-group">
+                                    <label>Account Number</label>
+                                    <input type="text" name="bankAccount">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>IFSC Code</label>
+                                    <input type="text" name="bankIfsc">
+                                </div>
+                                <div class="form-group">
+                                    <label>Branch</label>
+                                    <input type="text" name="bankBranch">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card settings-card">
+                        <h3>Voucher & Invoice Series</h3>
+                        <form id="invoiceSettingsForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Invoice Prefix</label>
+                                    <input type="text" name="invoicePrefix" value="INV">
+                                </div>
+                                <div class="form-group">
+                                    <label>Invoice Series</label>
+                                    <input type="text" name="invoiceSeries" value="2024-25">
+                                </div>
+                                <div class="form-group">
+                                    <label>Start Number</label>
+                                    <input type="number" name="invoiceStartNumber" value="1" min="1">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Terms & Conditions</label>
+                                <textarea name="termsConditions" rows="3"></textarea>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card settings-card">
+                        <h3>Save Settings</h3>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 16px;">Save company, bank, and invoice configuration into the database.</p>
+                        <button class="btn btn-primary" id="saveSettingsBtn" style="width: 100%;">Save All Settings</button>
+                    </div>
+
+                    <div class="card settings-card">
+                        <h3>Local Excel Database & Storage</h3>
+                        <div class="form-group">
+                            <label>Active Excel Database File</label>
+                            <input type="text" id="dbPathDisplay" readonly style="font-family: monospace; font-size: 0.85rem; background: #f8fafc; margin-bottom: 12px;" value="Loading...">
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-secondary" id="openDbFolderBtn" title="Reveal in Windows Explorer">Open Folder</button>
+                                <button type="button" class="btn btn-secondary" id="openDbFileBtn" title="Open directly in Excel">Open in Excel</button>
+                                <button type="button" class="btn btn-secondary" id="exportExcelBtn" title="Save a copy of database to any folder">Save / Export Excel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card settings-card">
+                        <h3>Backup & Restore</h3>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 16px;">Backup your entire accounting database (products, clients, purchases, invoices, ledgers, vouchers) to Excel.</p>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+                            <button type="button" class="btn btn-primary" id="backupDataBtn">Create Backup Now</button>
+                            <button type="button" class="btn btn-secondary" id="restoreDataBtn">Restore from Backup</button>
+                        </div>
+                        <div style="border-top: 1px solid #fee2e2; padding-top: 16px; margin-top: 8px;">
+                            <label style="color: #ef4444; font-weight: 600; display: block; margin-bottom: 4px;">Danger Zone</label>
+                            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 8px;">Resetting will clear all invoices, products, and clients and restore standard TaxTech ERP defaults.</p>
+                            <button type="button" class="btn btn-danger" id="resetDataBtn">Reset All Data</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL 1: SALES INVOICE -->
+    <div class="modal" id="invoiceModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3 id="invoiceModalTitle">Create Sales Invoice</h3>
+                <button class="modal-close" id="closeInvoiceModal">&times;</button>
+            </div>
+            <form id="invoiceForm">
+                <div class="modal-body">
+                    <div class="invoice-header-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Invoice Number *</label>
+                                <input type="text" name="invoiceNumber" id="invoiceNumber" required readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Invoice Date *</label>
+                                <input type="date" name="date" id="invoiceDate" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Customer (Debtor) *</label>
+                                <select name="clientId" id="invoiceClient" required>
+                                    <option value="">Select Customer</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Place of Supply *</label>
+                                <select name="placeOfSupply" id="placeOfSupply" required>
+                                    <option value="">Select State</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="reverseCharge" id="reverseCharge">
+                                <label for="reverseCharge">Reverse Charge Applicable</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="invoice-items-section">
+                        <div class="section-header">
+                            <h4>Line Items (Goods & Services)</h4>
+                            <button type="button" class="btn btn-sm btn-secondary" id="addItemBtn">+ Add Item / Service</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table" id="invoiceItemsTable">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Item / Service</th>
+                                        <th>HSN/SAC</th>
+                                        <th>Qty</th>
+                                        <th>Unit</th>
+                                        <th>Rate</th>
+                                        <th>Disc %</th>
+                                        <th>Taxable</th>
+                                        <th>GST %</th>
+                                        <th>CGST</th>
+                                        <th>SGST</th>
+                                        <th>IGST</th>
+                                        <th>Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="invoice-summary-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Discount (₹)</label>
+                                <input type="number" name="discount" id="invoiceDiscount" value="0" step="0.01" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Round Off (₹)</label>
+                                <input type="number" name="roundOff" id="invoiceRoundOff" value="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>Notes / Narration</label>
+                                <input type="text" name="notes" id="invoiceNotes">
+                            </div>
+                        </div>
+                        <div class="summary-totals">
+                            <div class="summary-row"><span>Subtotal (Taxable)</span><span id="summarySubtotal">₹0.00</span></div>
+                            <div class="summary-row"><span>Total CGST</span><span id="summaryCgst">₹0.00</span></div>
+                            <div class="summary-row"><span>Total SGST</span><span id="summarySgst">₹0.00</span></div>
+                            <div class="summary-row"><span>Total IGST</span><span id="summaryIgst">₹0.00</span></div>
+                            <div class="summary-row"><span>Total Tax</span><span id="summaryTotalTax">₹0.00</span></div>
+                            <div class="summary-row"><span>Discount</span><span id="summaryDiscount">₹0.00</span></div>
+                            <div class="summary-row"><span>Round Off</span><span id="summaryRoundOff">₹0.00</span></div>
+                            <div class="summary-row grand-total"><span>Grand Total</span><span id="summaryGrandTotal">₹0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelInvoiceBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveInvoiceBtn">Save Invoice</button>
+                    <button type="button" class="btn btn-success" id="generatePdfBtn" style="display:none;">Generate PDF</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PURCHASE BILL (INWARD) -->
+    <div class="modal" id="purchaseModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3 id="purchaseModalTitle">Record Purchase Bill (Inward)</h3>
+                <button class="modal-close" id="closePurchaseModal">&times;</button>
+            </div>
+            <form id="purchaseForm">
+                <div class="modal-body">
+                    <div class="invoice-header-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Purchase Voucher No. *</label>
+                                <input type="text" name="purchaseNumber" id="purchaseNumber" required readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Bill Date *</label>
+                                <input type="date" name="date" id="purchaseDate" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Supplier (Creditor) *</label>
+                                <select name="supplierId" id="purchaseSupplier" required>
+                                    <option value="">Select Supplier</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Supplier Bill / Invoice No.</label>
+                                <input type="text" name="supplierBillNo" id="supplierBillNo" placeholder="e.g. SUPP/1029">
+                            </div>
+                            <div class="form-group">
+                                <label>Place of Supply *</label>
+                                <select name="placeOfSupply" id="purchasePlaceOfSupply" required>
+                                    <option value="">Select State</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="invoice-items-section">
+                        <div class="section-header">
+                            <h4>Purchase Line Items (Goods & Services)</h4>
+                            <button type="button" class="btn btn-sm btn-secondary" id="addPurchaseItemBtn">+ Add Item / Service</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table" id="purchaseItemsTable">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Item / Service</th>
+                                        <th>HSN/SAC</th>
+                                        <th>Qty</th>
+                                        <th>Unit</th>
+                                        <th>Rate</th>
+                                        <th>Disc %</th>
+                                        <th>Taxable</th>
+                                        <th>GST %</th>
+                                        <th>CGST</th>
+                                        <th>SGST</th>
+                                        <th>IGST</th>
+                                        <th>Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="invoice-summary-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Discount (₹)</label>
+                                <input type="number" name="discount" id="purchaseDiscount" value="0" step="0.01" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Round Off (₹)</label>
+                                <input type="number" name="roundOff" id="purchaseRoundOff" value="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>Notes / Narration</label>
+                                <input type="text" name="notes" id="purchaseNotes">
+                            </div>
+                        </div>
+                        <div class="summary-totals">
+                            <div class="summary-row"><span>Subtotal (Taxable)</span><span id="purchaseSummarySubtotal">₹0.00</span></div>
+                            <div class="summary-row"><span>CGST (Input)</span><span id="purchaseSummaryCgst">₹0.00</span></div>
+                            <div class="summary-row"><span>SGST (Input)</span><span id="purchaseSummarySgst">₹0.00</span></div>
+                            <div class="summary-row"><span>IGST (Input)</span><span id="purchaseSummaryIgst">₹0.00</span></div>
+                            <div class="summary-row"><span>Total Input Tax</span><span id="purchaseSummaryTotalTax">₹0.00</span></div>
+                            <div class="summary-row"><span>Discount</span><span id="purchaseSummaryDiscount">₹0.00</span></div>
+                            <div class="summary-row"><span>Round Off</span><span id="purchaseSummaryRoundOff">₹0.00</span></div>
+                            <div class="summary-row grand-total"><span>Grand Total</span><span id="purchaseSummaryGrandTotal">₹0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelPurchaseBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="savePurchaseBtn">Save Purchase Bill</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: PRODUCT / SERVICE MASTER -->
+    <div class="modal" id="productModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="productModalTitle">Add Item / Service</h3>
+                <button class="modal-close" id="closeProductModal">&times;</button>
+            </div>
+            <form id="productForm">
+                <input type="hidden" name="id" id="productId">
+                <div class="modal-body">
+                    <!-- Goods vs Service Selection -->
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="font-weight: 600;">Item Category / Provision *</label>
+                        <div class="radio-card-group">
+                            <label class="radio-card active" id="typeGoodsLabel">
+                                <input type="radio" name="type" value="Goods" checked>
+                                <strong>Goods</strong>
+                                <small>Physical Stock & Inventory</small>
+                            </label>
+                            <label class="radio-card" id="typeServiceLabel">
+                                <input type="radio" name="type" value="Service">
+                                <strong>Service</strong>
+                                <small>Services / SAC Code</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label id="productNameLabel">Item Name *</label>
+                            <input type="text" name="name" id="productName" required>
+                        </div>
+                        <div class="form-group">
+                            <label id="productHsnLabel">HSN Code *</label>
+                            <input type="text" name="hsn" id="productHsn" required placeholder="e.g. 8471 or 9983">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Unit of Measure *</label>
+                            <input type="text" name="unit" id="productUnit" value="PCS" required>
+                        </div>
+                        <div class="form-group">
+                            <label>GST Rate (%) *</label>
+                            <input type="number" name="gstRate" id="productGstRate" step="0.01" min="0" max="100" required value="18">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sale Price (₹) *</label>
+                            <input type="number" name="salePrice" id="productSalePrice" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Purchase Price / Cost (₹)</label>
+                            <input type="number" name="purchasePrice" id="productPurchasePrice" step="0.01" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group" id="openingStockGroup">
+                        <label>Opening Physical Stock (Qty)</label>
+                        <input type="number" name="openingStock" id="productOpeningStock" step="0.01" min="0" value="0">
+                        <small style="color: #64748b;">Initial inventory balance before recording purchases/sales.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Description / Details</label>
+                        <textarea name="description" id="productDescription" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelProductBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Item / Service</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: PARTY (CUSTOMER / SUPPLIER) MASTER -->
+    <div class="modal" id="clientModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="clientModalTitle">Add Party</h3>
+                <button class="modal-close" id="closeClientModal">&times;</button>
+            </div>
+            <form id="clientForm">
+                <input type="hidden" name="id" id="clientId">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Party Name *</label>
+                            <input type="text" name="name" id="clientName" placeholder="Enter party / customer / supplier name" required autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label>Party Type *</label>
+                            <select name="partyType" id="clientPartyType" required>
+                                <option value="Customer">Customer (Sundry Debtor)</option>
+                                <option value="Supplier">Supplier (Sundry Creditor)</option>
+                                <option value="Both">Both (Debtor & Creditor)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Opening Balance (₹)</label>
+                            <input type="number" name="openingBalance" id="clientOpeningBalance" step="0.01" value="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Balance Type</label>
+                            <select name="balanceType" id="clientBalanceType">
+                                <option value="Dr">Debit (Dr - Receivable)</option>
+                                <option value="Cr">Credit (Cr - Payable)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>GSTIN</label>
+                            <input type="text" name="gstin" id="clientGstin" placeholder="e.g. 29ABCDE1234F1Z5" maxlength="15">
+                        </div>
+                        <div class="form-group">
+                            <label>PAN</label>
+                            <input type="text" name="pan" id="clientPan" placeholder="e.g. ABCDE1234F" maxlength="10">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Address Line 1 *</label>
+                        <input type="text" name="address1" id="clientAddress1" placeholder="Door / Building / Street address" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Address Line 2</label>
+                        <input type="text" name="address2" id="clientAddress2" placeholder="Area / Landmark (optional)">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>City *</label>
+                            <input type="text" name="city" id="clientCity" placeholder="City / Town" required>
+                        </div>
+                        <div class="form-group">
+                            <label>State *</label>
+                            <select name="state" id="clientState" required>
+                                <option value="">Select State</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>State Code *</label>
+                            <input type="text" name="stateCode" id="clientStateCode" placeholder="State code" required readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Pincode *</label>
+                            <input type="text" name="pincode" id="clientPincode" placeholder="6-digit Pincode" maxlength="6" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phone / Mobile</label>
+                            <input type="text" name="phone" id="clientPhone" placeholder="+91-9876543210">
+                        </div>
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" name="email" id="clientEmail" placeholder="party@example.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Contact Person</label>
+                            <input type="text" name="contactPerson" id="clientContactPerson" placeholder="Representative name">
+                        </div>
+                        <div class="form-group">
+                            <label>Credit Limit (₹)</label>
+                            <input type="number" name="creditLimit" id="clientCreditLimit" step="0.01" min="0" value="0" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelClientBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Party</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 5: VOUCHER ENTRY (RECEIPT / PAYMENT / CONTRA / JOURNAL) -->
+    <div class="modal" id="voucherModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="voucherModalTitle">Record Accounting Voucher</h3>
+                <button class="modal-close" id="closeVoucherModal">&times;</button>
+            </div>
+            <form id="voucherForm">
+                <input type="hidden" name="id" id="voucherId">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Voucher Type *</label>
+                            <select name="type" id="voucherType" required>
+                                <option value="Payment">Payment Voucher (Cash/Bank Out)</option>
+                                <option value="Receipt">Receipt Voucher (Cash/Bank In)</option>
+                                <option value="Contra">Contra Voucher (Cash ⇄ Bank)</option>
+                                <option value="Journal">Journal Voucher (Adjustments)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Voucher No. *</label>
+                            <input type="text" name="voucherNumber" id="voucherNumber" required readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Date *</label>
+                            <input type="date" name="date" id="voucherDate" required>
+                        </div>
+                    </div>
+
+                    <!-- Payment / Receipt Specific Fields -->
+                    <div id="voucherModeRow" class="form-row">
+                        <div class="form-group">
+                            <label id="voucherModeLabel">Payment / Receipt Mode *</label>
+                            <select name="mode" id="voucherMode">
+                                <option value="Cash">Cash</option>
+                                <option value="Bank">Bank Account</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label id="voucherLedgerLabel">Party / Account Ledger *</label>
+                            <select name="partyLedger" id="voucherPartyLedger" required>
+                                <option value="">Select Ledger / Party</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Contra Specific Fields -->
+                    <div id="contraRow" class="form-row" style="display: none;">
+                        <div class="form-group">
+                            <label>Deposit To (Debit Ledger) *</label>
+                            <select name="contraDebit" id="contraDebit">
+                                <option value="Bank Account">Bank Account</option>
+                                <option value="Cash">Cash</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Withdraw From (Credit Ledger) *</label>
+                            <select name="contraCredit" id="contraCredit">
+                                <option value="Cash">Cash</option>
+                                <option value="Bank Account">Bank Account</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Journal Specific Fields -->
+                    <div id="journalRow" class="form-row" style="display: none;">
+                        <div class="form-group">
+                            <label>Debit Ledger *</label>
+                            <select name="journalDebit" id="journalDebit">
+                                <option value="">Select Debit Account</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Credit Ledger *</label>
+                            <select name="journalCredit" id="journalCredit">
+                                <option value="">Select Credit Account</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Amount (₹) *</label>
+                            <input type="number" name="amount" id="voucherAmount" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Ref / Cheque / UTR No.</label>
+                            <input type="text" name="referenceNo" id="voucherRefNo" placeholder="e.g. CHQ-98129">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Narration / Remarks</label>
+                        <textarea name="narration" id="voucherNarration" rows="2" placeholder="e.g. Paid office rent for the month"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelVoucherBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Voucher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: LEDGER CREATION & ALTERATION -->
+    <div class="modal" id="ledgerModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="ledgerModalTitle">Create Accounting Ledger</h3>
+                <button class="modal-close" id="closeLedgerModal">&times;</button>
+            </div>
+            <form id="ledgerForm">
+                <input type="hidden" name="id" id="ledgerId">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Ledger Name *</label>
+                        <input type="text" name="name" id="ledgerName" required placeholder="e.g. Office Rent, Furniture & Fixture">
+                    </div>
+                    <div class="form-group">
+                        <label>Standard Accounting Group (28 Core Groups) *</label>
+                        <select name="groupName" id="ledgerGroupName" required>
+                            <option value="">Select Group</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Opening Balance (₹)</label>
+                            <input type="number" name="openingBalance" id="ledgerOpeningBalance" step="0.01" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Balance Type</label>
+                            <select name="balanceType" id="ledgerBalanceType">
+                                <option value="Dr">Debit (Dr)</option>
+                                <option value="Cr">Credit (Cr)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Description / Notes</label>
+                        <textarea name="description" id="ledgerDescription" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelLedgerBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Ledger</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

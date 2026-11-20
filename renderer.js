@@ -1,0 +1,2494 @@
+// Renderer Process for TaxTech ERP Suite
+
+// State
+let products = [];
+let clients = [];
+let invoices = [];
+let invoiceItems = [];
+let purchases = [];
+let purchaseItems = [];
+let vouchers = [];
+let ledgerGroups = [];
+let ledgers = [];
+let stockRegister = [];
+let financialReports = null;
+let settings = {};
+
+let editingInvoiceId = null;
+let editingPurchaseId = null;
+let editingProductId = null;
+let editingClientId = null;
+let editingVoucherId = null;
+let editingLedgerId = null;
+
+let itemCounter = 0;
+let purchaseItemCounter = 0;
+
+let currentProductFilter = 'all';
+let currentPartyFilter = 'all';
+let currentVoucherFilter = 'all';
+let currentCashBankBook = 'cash';
+let currentLedgerMasterTab = 'ledgers';
+let currentFinancialSheet = 'trialBalance';
+
+// Indian States for Place of Supply
+const indianStates = [
+    { code: '01', name: 'Jammu & Kashmir' },
+    { code: '02', name: 'Himachal Pradesh' },
+    { code: '03', name: 'Punjab' },
+    { code: '04', name: 'Chandigarh' },
+    { code: '05', name: 'Uttarakhand' },
+    { code: '06', name: 'Haryana' },
+    { code: '07', name: 'Delhi' },
+    { code: '08', name: 'Rajasthan' },
+    { code: '09', name: 'Uttar Pradesh' },
+    { code: '10', name: 'Bihar' },
+    { code: '11', name: 'Sikkim' },
+    { code: '12', name: 'Arunachal Pradesh' },
+    { code: '13', name: 'Nagaland' },
+    { code: '14', name: 'Manipur' },
+    { code: '15', name: 'Mizoram' },
+    { code: '16', name: 'Tripura' },
+    { code: '17', name: 'Meghalaya' },
+    { code: '18', name: 'Assam' },
+    { code: '19', name: 'West Bengal' },
+    { code: '20', name: 'Jharkhand' },
+    { code: '21', name: 'Odisha' },
+    { code: '22', name: 'Chhattisgarh' },
+    { code: '23', name: 'Madhya Pradesh' },
+    { code: '24', name: 'Gujarat' },
+    { code: '25', name: 'Daman & Diu' },
+    { code: '26', name: 'Dadra & Nagar Haveli' },
+    { code: '27', name: 'Maharashtra' },
+    { code: '28', name: 'Andhra Pradesh' },
+    { code: '29', name: 'Karnataka' },
+    { code: '30', name: 'Goa' },
+    { code: '31', name: 'Lakshadweep' },
+    { code: '32', name: 'Kerala' },
+    { code: '33', name: 'Tamil Nadu' },
+    { code: '34', name: 'Puducherry' },
+    { code: '35', name: 'Andaman & Nicobar Islands' },
+    { code: '36', name: 'Telangana' },
+    { code: '37', name: 'Andhra Pradesh (New)' },
+    { code: '38', name: 'Ladakh' },
+    { code: '97', name: 'Other Territory' },
+    { code: '99', name: 'Center Jurisdiction' }
+];
+
+// Initialize App
+function initApp() {
+    setupEventListeners();
+    populateStateDropdowns();
+    loadAllData().then(() => {
+        updateDashboard();
+        renderAllTables();
+    }).catch(err => {
+        console.error('Error during initial load:', err);
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
+
+// Load all data from main process
+async function loadAllData() {
+    try {
+        const [
+            p, c, inv, invItems, pur, purItems,
+            vch, groups, ldg, stock, fin, set, dbPath
+        ] = await Promise.all([
+            ipcRenderer.invoke('get-products').catch(() => []),
+            ipcRenderer.invoke('get-clients').catch(() => []),
+            ipcRenderer.invoke('get-invoices').catch(() => []),
+            ipcRenderer.invoke('get-invoice-items').catch(() => []),
+            ipcRenderer.invoke('get-purchases').catch(() => []),
+            ipcRenderer.invoke('get-purchase-items').catch(() => []),
+            ipcRenderer.invoke('get-vouchers').catch(() => []),
+            ipcRenderer.invoke('get-ledger-groups').catch(() => []),
+            ipcRenderer.invoke('get-ledgers').catch(() => []),
+            ipcRenderer.invoke('get-stock-register').catch(() => []),
+            ipcRenderer.invoke('get-financial-reports').catch(() => null),
+            ipcRenderer.invoke('get-settings').catch(() => ({})),
+            ipcRenderer.invoke('get-db-path').catch(() => '')
+        ]);
+
+        products = p || [];
+        clients = c || [];
+        invoices = inv || [];
+        invoiceItems = invItems || [];
+        purchases = pur || [];
+        purchaseItems = purItems || [];
+        vouchers = vch || [];
+        ledgerGroups = groups || [];
+        ledgers = ldg || [];
+        stockRegister = stock || [];
+        financialReports = fin;
+        settings = set || {};
+
+        populateSettingsForm(dbPath);
+        populateLedgerGroupDropdown();
+        console.log('All ERP data loaded successfully.');
+    } catch (error) {
+        console.error('Error loading data:', error);
+        showToast('Error loading accounting data', 'error');
+    }
+}
+
+// Setup Event Listeners
+function setupEventListeners() {
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => switchView(item.dataset.view));
+    });
+
+    // Mobile Menu toggle
+    document.getElementById('menuToggle').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', closeAllModals);
+    });
+
+    // Prevent clicks inside modal dialogs from bubbling to the overlay
+    document.querySelectorAll('.modal-content').forEach(content => {
+        content.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    });
+
+    // Top Bar Buttons
+    document.getElementById('topVoucherBtn')?.addEventListener('click', () => openVoucherModal());
+    document.getElementById('topPurchaseBtn')?.addEventListener('click', () => openPurchaseModal());
+    document.getElementById('globalNewInvoiceBtn')?.addEventListener('click', () => openInvoiceModal());
+    initTheme();
+
+    // Global click listener to close combobox menus on outside click
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.combobox-container')) {
+            closeAllComboboxes();
+        }
+    });
+
+    // Dashboard Quick Actions
+    document.querySelector('[data-action="newInvoice"]')?.addEventListener('click', () => openInvoiceModal());
+    document.querySelector('[data-action="newPurchase"]')?.addEventListener('click', () => openPurchaseModal());
+    document.querySelector('[data-action="newVoucher"]')?.addEventListener('click', () => openVoucherModal());
+    document.querySelector('[data-action="newProduct"]')?.addEventListener('click', () => openProductModal());
+    document.querySelector('[data-action="stockRegister"]')?.addEventListener('click', () => switchView('stockRegister'));
+    document.querySelector('[data-action="financials"]')?.addEventListener('click', () => switchView('financials'));
+    document.getElementById('viewAllInvoicesBtn')?.addEventListener('click', () => switchView('invoices'));
+
+    // View Action Buttons
+    document.getElementById('newInvoiceBtn')?.addEventListener('click', () => openInvoiceModal());
+    document.getElementById('newPurchaseBtn')?.addEventListener('click', () => openPurchaseModal());
+    document.getElementById('newProductBtn')?.addEventListener('click', () => openProductModal());
+    document.getElementById('newClientBtn')?.addEventListener('click', () => openClientModal());
+    document.getElementById('newVoucherBtn')?.addEventListener('click', () => openVoucherModal());
+    document.getElementById('newLedgerBtn')?.addEventListener('click', () => openLedgerModal());
+
+    // Search Inputs
+    document.getElementById('invoiceSearch')?.addEventListener('input', (e) => filterTable('invoicesTable', e.target.value));
+    document.getElementById('purchaseSearch')?.addEventListener('input', (e) => filterTable('purchasesTable', e.target.value));
+    document.getElementById('productSearch')?.addEventListener('input', (e) => filterTable('productsTable', e.target.value));
+    document.getElementById('stockSearch')?.addEventListener('input', (e) => filterTable('stockRegisterTable', e.target.value));
+    document.getElementById('clientSearch')?.addEventListener('input', (e) => filterTable('clientsTable', e.target.value));
+    document.getElementById('voucherSearch')?.addEventListener('input', (e) => filterTable('vouchersTable', e.target.value));
+
+    // Filter Pills
+    // 1. Products Filter (All / Goods / Service)
+    document.querySelectorAll('#productFilterTabs .pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#productFilterTabs .pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentProductFilter = btn.dataset.filter;
+            renderProductsTable();
+        });
+    });
+
+    // 2. Party Filter (All / Customer / Supplier)
+    document.querySelectorAll('#partyFilterTabs .pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#partyFilterTabs .pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPartyFilter = btn.dataset.filter;
+            renderClientsTable();
+        });
+    });
+
+    // 3. Voucher Filter (All / Receipt / Payment / Contra / Journal)
+    document.querySelectorAll('#voucherFilterTabs .pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#voucherFilterTabs .pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentVoucherFilter = btn.dataset.filter;
+            renderVouchersTable();
+        });
+    });
+
+    // 4. Cash / Bank Book Tabs
+    document.querySelectorAll('#cashBankTabs .pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#cashBankTabs .pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentCashBankBook = btn.dataset.book;
+            renderCashBankRegister();
+        });
+    });
+
+    // 5. Ledger Master Tabs (Ledgers / 28 Groups)
+    document.querySelectorAll('#ledgerMasterTabs .pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#ledgerMasterTabs .pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentLedgerMasterTab = btn.dataset.tab;
+            if (currentLedgerMasterTab === 'ledgers') {
+                document.getElementById('ledgersSubView').style.display = 'block';
+                document.getElementById('groupsSubView').style.display = 'none';
+            } else {
+                document.getElementById('ledgersSubView').style.display = 'none';
+                document.getElementById('groupsSubView').style.display = 'block';
+            }
+        });
+    });
+
+    // 6. Financial Statements Tabs
+    document.querySelectorAll('#financialTabs .pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#financialTabs .pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFinancialSheet = btn.dataset.sheet;
+            showFinancialSheet(currentFinancialSheet);
+        });
+    });
+
+    document.getElementById('refreshFinancialsBtn')?.addEventListener('click', async () => {
+        await loadAllData();
+        renderFinancialStatements();
+        showToast('Financial reports updated', 'success');
+    });
+
+    // Export to Excel Buttons
+    document.getElementById('exportInvoicesExcelBtn')?.addEventListener('click', () => exportExcel('Invoices'));
+    document.getElementById('exportPurchasesExcelBtn')?.addEventListener('click', () => exportExcel('Purchases'));
+    document.getElementById('exportProductsExcelBtn')?.addEventListener('click', () => exportExcel('Products'));
+    document.getElementById('exportStockExcelBtn')?.addEventListener('click', () => exportStockToExcel());
+    document.getElementById('exportClientsExcelBtn')?.addEventListener('click', () => exportExcel('Clients'));
+    document.getElementById('exportVouchersExcelBtn')?.addEventListener('click', () => exportExcel('Vouchers'));
+    document.getElementById('exportCashBankExcelBtn')?.addEventListener('click', () => exportExcel('Vouchers'));
+    document.getElementById('exportExcelBtn')?.addEventListener('click', () => exportExcel());
+
+    // Invoice Modal
+    document.getElementById('closeInvoiceModal')?.addEventListener('click', closeInvoiceModal);
+    document.getElementById('cancelInvoiceBtn')?.addEventListener('click', closeInvoiceModal);
+    document.getElementById('invoiceForm')?.addEventListener('submit', (e) => { e.preventDefault(); saveInvoice(); });
+    document.getElementById('addItemBtn')?.addEventListener('click', addInvoiceItem);
+    document.getElementById('saveInvoiceBtn')?.addEventListener('click', saveInvoice);
+    document.getElementById('generatePdfBtn')?.addEventListener('click', generateInvoicePDF);
+    document.getElementById('invoiceDiscount')?.addEventListener('input', calculateInvoiceTotals);
+    document.getElementById('invoiceRoundOff')?.addEventListener('input', calculateInvoiceTotals);
+    document.getElementById('invoiceClient')?.addEventListener('change', onClientChange);
+
+    // Purchase Modal
+    document.getElementById('closePurchaseModal')?.addEventListener('click', closePurchaseModal);
+    document.getElementById('cancelPurchaseBtn')?.addEventListener('click', closePurchaseModal);
+    document.getElementById('purchaseForm')?.addEventListener('submit', (e) => { e.preventDefault(); savePurchase(); });
+    document.getElementById('addPurchaseItemBtn')?.addEventListener('click', addPurchaseItem);
+    document.getElementById('savePurchaseBtn')?.addEventListener('click', savePurchase);
+    document.getElementById('purchaseDiscount')?.addEventListener('input', calculatePurchaseTotals);
+    document.getElementById('purchaseRoundOff')?.addEventListener('input', calculatePurchaseTotals);
+    document.getElementById('purchaseSupplier')?.addEventListener('change', onSupplierChange);
+
+    // Product Modal & Type Radio Toggle
+    document.getElementById('closeProductModal')?.addEventListener('click', closeProductModal);
+    document.getElementById('cancelProductBtn')?.addEventListener('click', closeProductModal);
+    document.getElementById('productForm')?.addEventListener('submit', saveProduct);
+    document.querySelectorAll('input[name="type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => handleProductTypeToggle(e.target.value));
+    });
+
+    // Client Modal
+    document.getElementById('closeClientModal')?.addEventListener('click', closeClientModal);
+    document.getElementById('cancelClientBtn')?.addEventListener('click', closeClientModal);
+    document.getElementById('clientForm')?.addEventListener('submit', saveClient);
+
+    // Voucher Modal
+    document.getElementById('closeVoucherModal')?.addEventListener('click', closeVoucherModal);
+    document.getElementById('cancelVoucherBtn')?.addEventListener('click', closeVoucherModal);
+    document.getElementById('voucherForm')?.addEventListener('submit', saveVoucher);
+    document.getElementById('voucherType')?.addEventListener('change', onVoucherTypeChange);
+
+    // Ledger Modal
+    document.getElementById('closeLedgerModal')?.addEventListener('click', closeLedgerModal);
+    document.getElementById('cancelLedgerBtn')?.addEventListener('click', closeLedgerModal);
+    document.getElementById('ledgerForm')?.addEventListener('submit', saveLedger);
+
+    // Settings & Database
+    document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettings);
+    document.getElementById('backupDataBtn')?.addEventListener('click', backupData);
+    document.getElementById('restoreDataBtn')?.addEventListener('click', restoreData);
+    document.getElementById('openDbFolderBtn')?.addEventListener('click', openDbFolder);
+    document.getElementById('openDbFileBtn')?.addEventListener('click', openDbFile);
+    document.getElementById('resetDataBtn')?.addEventListener('click', resetData);
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAllModals();
+        if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+            e.preventDefault();
+            openInvoiceModal();
+        }
+    });
+}
+
+// Navigation
+function switchView(viewName) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    const targetView = document.getElementById(viewName + 'View');
+    const targetNav = document.querySelector(`[data-view="${viewName}"]`);
+    if (targetView) targetView.classList.add('active');
+    if (targetNav) targetNav.classList.add('active');
+
+    const titleMap = {
+        dashboard: 'Dashboard',
+        invoices: 'Sales Invoices',
+        purchases: 'Purchases (Inward Bills)',
+        products: 'Items & Services Master',
+        stockRegister: 'Stock Register & Inventory Valuation',
+        clients: 'Parties Master (Debtors & Creditors)',
+        vouchers: 'Receipt & Payment Vouchers',
+        cashBank: 'Cash Book & Bank Book',
+        ledgers: 'Accounts & Ledgers',
+        financials: 'Financial Statements (Trial Balance, P&L, Balance Sheet)',
+        settings: 'Settings & Database Backup'
+    };
+    document.getElementById('viewTitle').textContent = titleMap[viewName] || 'TaxTech ERP';
+    document.getElementById('sidebar').classList.remove('open');
+
+    // Auto-refresh financial reports or stock register when navigating
+    if (viewName === 'financials') {
+        renderFinancialStatements();
+    } else if (viewName === 'stockRegister') {
+        renderStockRegisterTable();
+    } else if (viewName === 'cashBank') {
+        renderCashBankRegister();
+    }
+}
+
+// Populate State Dropdowns
+function populateStateDropdowns() {
+    const selects = [
+        document.getElementById('placeOfSupply'),
+        document.getElementById('purchasePlaceOfSupply'),
+        document.getElementById('clientState')
+    ];
+
+    selects.forEach(sel => {
+        if (!sel || sel.tagName !== 'SELECT') return;
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">Select State</option>';
+        indianStates.forEach(st => {
+            const opt = new Option(`${st.name} (${st.code})`, st.name);
+            sel.add(opt);
+        });
+        if (currentVal) sel.value = currentVal;
+    });
+
+    const clientState = document.getElementById('clientState');
+    const clientStateCode = document.getElementById('clientStateCode');
+    if (clientState) {
+        clientState.addEventListener('change', () => {
+            const found = indianStates.find(s => s.name === clientState.value);
+            if (found && clientStateCode) clientStateCode.value = found.code;
+        });
+    }
+}
+
+// Populate Ledger Groups in Modal
+function populateLedgerGroupDropdown() {
+    const sel = document.getElementById('ledgerGroupName');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Select Accounting Group</option>';
+
+    const natureOrder = ['Liabilities', 'Assets', 'Income', 'Expenses'];
+    natureOrder.forEach(nat => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = `--- ${nat.toUpperCase()} ---`;
+        const matched = ledgerGroups.filter(g => g.nature === nat);
+        matched.forEach(g => {
+            const opt = new Option(`${g.name}${g.parentGroup ? ` (Sub of ${g.parentGroup})` : ''}`, g.name);
+            optgroup.appendChild(opt);
+        });
+        sel.appendChild(optgroup);
+    });
+}
+
+// Render All Tables
+function renderAllTables() {
+    renderInvoicesTable();
+    renderPurchasesTable();
+    renderProductsTable();
+    renderStockRegisterTable();
+    renderClientsTable();
+    renderVouchersTable();
+    renderCashBankRegister();
+    renderLedgersTable();
+    renderGroupsTable();
+    renderFinancialStatements();
+    renderRecentInvoicesTable();
+    updateDashboard();
+}
+
+// Update Dashboard
+function updateDashboard() {
+    document.getElementById('totalInvoices').textContent = invoices.length;
+    const rev = invoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
+    document.getElementById('totalRevenue').textContent = '₹' + formatNumber(rev);
+
+    const purTotal = purchases.reduce((sum, p) => sum + (Number(p.grandTotal) || 0), 0);
+    document.getElementById('totalPurchasesVal').textContent = '₹' + formatNumber(purTotal);
+
+    const stockTotal = stockRegister
+        .filter(i => i.type === 'Goods')
+        .reduce((sum, i) => sum + (Number(i.closingValue) || 0), 0);
+    document.getElementById('totalStockVal').textContent = '₹' + formatNumber(stockTotal);
+}
+
+// Filter Table helper
+function filterTable(tableId, query) {
+    const rows = document.querySelectorAll(`#${tableId} tbody tr`);
+    const q = query.toLowerCase();
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+// ==========================================================
+// 1. INVOICES (SALES)
+// ==========================================================
+function renderInvoicesTable() {
+    const tbody = document.querySelector('#invoicesTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    invoices.forEach(inv => {
+        const statusClass = inv.status?.toLowerCase() || 'draft';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${inv.invoiceNumber || '-'}</strong></td>
+            <td>${formatDate(inv.date)}</td>
+            <td>${inv.clientName || '-'}</td>
+            <td>${inv.clientGstin || '-'}</td>
+            <td>${inv.placeOfSupply || '-'}</td>
+            <td>₹${formatNumber(inv.subtotal)}</td>
+            <td>₹${formatNumber(inv.totalTax)}</td>
+            <td><strong>₹${formatNumber(inv.grandTotal)}</strong></td>
+            <td><span class="status-badge ${statusClass}">${inv.status || 'Draft'}</span></td>
+            <td>
+                <button class="btn-icon" onclick="editInvoice('${inv.id}')" title="Edit">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn-icon" onclick="viewInvoice('${inv.id}')" title="PDF Invoice">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button class="btn-icon delete" onclick="deleteInvoice('${inv.id}')" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function renderRecentInvoicesTable() {
+    const tbody = document.querySelector('#recentInvoicesTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const recent = [...invoices].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 5);
+    recent.forEach(inv => {
+        const statusClass = inv.status?.toLowerCase() || 'draft';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${inv.invoiceNumber || '-'}</strong></td>
+            <td>${formatDate(inv.date)}</td>
+            <td>${inv.clientName || '-'}</td>
+            <td>₹${formatNumber(inv.grandTotal)}</td>
+            <td><span class="status-badge ${statusClass}">${inv.status || 'Draft'}</span></td>
+            <td>
+                <button class="btn-icon" onclick="editInvoice('${inv.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="btn-icon" onclick="viewInvoice('${inv.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function openInvoiceModal(invoice = null) {
+    editingInvoiceId = invoice?.id || null;
+    document.getElementById('invoiceModalTitle').textContent = invoice ? 'Edit Sales Invoice' : 'Create Sales Invoice';
+    document.getElementById('generatePdfBtn').style.display = invoice ? 'inline-flex' : 'none';
+    document.getElementById('invoiceForm').reset();
+    document.getElementById('invoiceItemsTable').querySelector('tbody').innerHTML = '';
+    itemCounter = 0;
+
+    // Populate client dropdown
+    const clientSelect = document.getElementById('invoiceClient');
+    clientSelect.innerHTML = '<option value="">Select Customer</option>';
+    const customers = clients.filter(c => c.partyType !== 'Supplier');
+    (customers.length > 0 ? customers : clients).forEach(c => {
+        const opt = new Option(`${c.name} (${c.gstin || 'No GSTIN'})`, c.id);
+        opt.dataset.client = JSON.stringify(c);
+        clientSelect.add(opt);
+    });
+
+    if (invoice) {
+        document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
+        document.getElementById('invoiceDate').value = invoice.date ? invoice.date.split('T')[0] : new Date().toISOString().split('T')[0];
+        document.getElementById('invoiceClient').value = invoice.clientId || '';
+        document.getElementById('placeOfSupply').value = invoice.placeOfSupply || '';
+        document.getElementById('reverseCharge').checked = !!invoice.reverseCharge;
+        document.getElementById('invoiceDiscount').value = invoice.discount || 0;
+        document.getElementById('invoiceRoundOff').value = invoice.roundOff || 0;
+        document.getElementById('invoiceNotes').value = invoice.notes || '';
+
+        const items = invoiceItems.filter(i => i.invoiceId === invoice.id);
+        items.forEach(item => addInvoiceItemRow(item));
+    } else {
+        const nextNum = await ipcRenderer.invoke('get-next-invoice-number', settings);
+        document.getElementById('invoiceNumber').value = nextNum;
+        document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
+        addInvoiceItemRow();
+    }
+
+    calculateInvoiceTotals();
+    document.getElementById('invoiceModal').classList.add('active');
+}
+
+function closeInvoiceModal() {
+    document.getElementById('invoiceModal').classList.remove('active');
+    editingInvoiceId = null;
+}
+
+function onClientChange() {
+    const select = document.getElementById('invoiceClient');
+    const opt = select.options[select.selectedIndex];
+    if (opt && opt.dataset.client) {
+        const client = JSON.parse(opt.dataset.client);
+        if (client.state) {
+            document.getElementById('placeOfSupply').value = client.state;
+            calculateInvoiceTotals();
+        }
+    }
+}
+
+// Helper: Escape HTML strings
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// ==========================================================
+// THEME MANAGEMENT (LIGHT / DARK ENTERPRISE MODE)
+// ==========================================================
+function initTheme() {
+    const savedTheme = localStorage.getItem('taxtech_theme') || 'light';
+    applyTheme(savedTheme);
+
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const current = document.body.dataset.theme === 'dark' ? 'dark' : 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem('taxtech_theme', next);
+        });
+    }
+}
+
+function applyTheme(theme) {
+    const sunIcon = document.querySelector('#themeToggleBtn .sun-icon');
+    const moonIcon = document.querySelector('#themeToggleBtn .moon-icon');
+    if (theme === 'dark') {
+        document.body.dataset.theme = 'dark';
+        if (sunIcon) sunIcon.style.display = 'inline-block';
+        if (moonIcon) moonIcon.style.display = 'none';
+    } else {
+        delete document.body.dataset.theme;
+        if (sunIcon) sunIcon.style.display = 'none';
+        if (moonIcon) moonIcon.style.display = 'inline-block';
+    }
+}
+
+// ==========================================================
+// SEARCHABLE COMBOBOX COMPONENT FOR INVOICES & PURCHASES
+// ==========================================================
+function closeAllComboboxes() {
+    document.querySelectorAll('.combobox-menu').forEach(menu => {
+        menu.style.display = 'none';
+    });
+}
+
+function setupProductCombobox(container, mode, onSelectCallback) {
+    if (!container) return;
+    const input = container.querySelector('input[type="text"]');
+    const hidden = container.querySelector('input[type="hidden"]');
+    const menu = container.querySelector('.combobox-menu');
+    const arrowBtn = container.querySelector('.combobox-arrow-btn');
+    const tr = container.closest('tr');
+
+    // Pre-populate if hidden value exists or item already assigned
+    if (hidden && hidden.value) {
+        const existing = products.find(p => p.id === hidden.value);
+        if (existing) {
+            const badge = (existing.type === 'Service' || (existing.type || '').toLowerCase().includes('service')) ? '[Service]' : '[Goods]';
+            input.value = `${badge} ${existing.name}`;
+        }
+    }
+
+    function renderMenu(query = '') {
+        const q = (query || '').trim().toLowerCase();
+        // Clean out any existing [Goods] or [Service] prefixes from search query
+        const cleanQ = q.replace(/^\[(goods|service)\]\s*/i, '');
+        const filtered = products.filter(p => {
+            if (!cleanQ) return true;
+            return (p.name && p.name.toLowerCase().includes(cleanQ)) ||
+                   (p.hsn && p.hsn.toLowerCase().includes(cleanQ)) ||
+                   (p.category && p.category.toLowerCase().includes(cleanQ)) ||
+                   (p.type && p.type.toLowerCase().includes(cleanQ));
+        });
+
+        if (filtered.length === 0) {
+            menu.innerHTML = `<div class="combobox-empty">No matching items found.<br><small style="color:var(--text-muted);">Press Enter or Tab to use custom description.</small></div>`;
+            menu.style.display = 'block';
+            return;
+        }
+
+        const slice = filtered.slice(0, 50);
+        menu.innerHTML = slice.map((p, idx) => {
+            const isService = (p.type === 'Service' || (p.type || '').toLowerCase().includes('service'));
+            const badgeClass = isService ? 'badge-service' : 'badge-goods';
+            const badgeText = isService ? 'Service' : 'Goods';
+            const price = mode === 'purchase' ? (p.purchasePrice || p.salePrice || 0) : (p.salePrice || 0);
+            const stockDisplay = isService ? 'Non-Stock Service' : `Stock: ${formatNumber(p.stock || p.openingStock || 0)} ${p.unit || 'PCS'}`;
+            return `
+                <div class="combobox-item ${idx === 0 ? 'active' : ''}" data-id="${p.id}" data-idx="${idx}">
+                    <div class="combobox-item-top">
+                        <span class="combobox-badge ${badgeClass}">${badgeText}</span>
+                        <span class="combobox-item-name">${escapeHtml(p.name)}</span>
+                    </div>
+                    <div class="combobox-item-bottom">
+                        <span class="combobox-meta-hsn">HSN/SAC: ${escapeHtml(p.hsn || '-')}</span>
+                        <span class="combobox-meta-stock">${stockDisplay}</span>
+                        <span class="combobox-meta-price">₹${formatNumber(price)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        menu.style.display = 'block';
+    }
+
+    function selectProduct(prod) {
+        if (!prod) return;
+        hidden.value = prod.id;
+        const badge = (prod.type === 'Service' || (prod.type || '').toLowerCase().includes('service')) ? '[Service]' : '[Goods]';
+        input.value = `${badge} ${prod.name}`;
+        menu.style.display = 'none';
+
+        if (typeof onSelectCallback === 'function') {
+            onSelectCallback(prod, tr);
+        }
+
+        // Auto-advance focus to quantity input
+        const qtyInput = tr.querySelector(mode === 'purchase' ? '.pitem-qty' : '.item-qty');
+        if (qtyInput) {
+            qtyInput.focus();
+            qtyInput.select();
+        }
+    }
+
+    input.addEventListener('focus', () => {
+        closeAllComboboxes();
+        renderMenu(input.value);
+    });
+
+    input.addEventListener('input', () => {
+        renderMenu(input.value);
+    });
+
+    if (arrowBtn) {
+        arrowBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (menu.style.display === 'block') {
+                menu.style.display = 'none';
+            } else {
+                closeAllComboboxes();
+                renderMenu('');
+                input.focus();
+            }
+        });
+    }
+
+    menu.addEventListener('mousedown', (e) => {
+        const itemEl = e.target.closest('.combobox-item');
+        if (itemEl) {
+            e.preventDefault();
+            const prodId = itemEl.dataset.id;
+            const prod = products.find(p => p.id === prodId);
+            if (prod) {
+                selectProduct(prod);
+            }
+        }
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (menu.style.display !== 'block') {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                closeAllComboboxes();
+                renderMenu(input.value);
+                e.preventDefault();
+                return;
+            }
+        }
+
+        const items = Array.from(menu.querySelectorAll('.combobox-item'));
+        const activeIdx = items.findIndex(el => el.classList.contains('active'));
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (items.length > 0) {
+                const nextIdx = activeIdx < items.length - 1 ? activeIdx + 1 : 0;
+                items.forEach(el => el.classList.remove('active'));
+                items[nextIdx].classList.add('active');
+                items[nextIdx].scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (items.length > 0) {
+                const prevIdx = activeIdx > 0 ? activeIdx - 1 : items.length - 1;
+                items.forEach(el => el.classList.remove('active'));
+                items[prevIdx].classList.add('active');
+                items[prevIdx].scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'Enter') {
+            if (menu.style.display === 'block' && items.length > 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                const chosenEl = activeIdx >= 0 ? items[activeIdx] : items[0];
+                const prod = products.find(p => p.id === chosenEl.dataset.id);
+                if (prod) {
+                    selectProduct(prod);
+                } else {
+                    menu.style.display = 'none';
+                }
+            }
+        } else if (e.key === 'Escape') {
+            menu.style.display = 'none';
+        } else if (e.key === 'Tab') {
+            menu.style.display = 'none';
+        }
+    });
+}
+
+function addInvoiceItemRow(item = null) {
+    itemCounter++;
+    const tbody = document.querySelector('#invoiceItemsTable tbody');
+    const tr = document.createElement('tr');
+    tr.dataset.itemId = item?.id || `new_${itemCounter}`;
+
+    const qty = item?.quantity || 1;
+    const rate = item?.rate || 0;
+    const disc = item?.discountPercent || 0;
+    const defaultSearchVal = item?.productName ? item.productName : '';
+
+    tr.innerHTML = `
+        <td>${tbody.children.length + 1}</td>
+        <td>
+            <div class="combobox-container item-combobox">
+                <div class="combobox-input-wrap">
+                    <input type="text" class="item-search-input" placeholder="🔍 Search item / service..." autocomplete="off" value="${escapeHtml(defaultSearchVal)}">
+                    <button type="button" class="combobox-arrow-btn" tabindex="-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                </div>
+                <input type="hidden" class="item-product" value="${item?.productId || ''}">
+                <div class="combobox-menu" style="display: none;"></div>
+            </div>
+        </td>
+        <td><input type="text" class="item-hsn" value="${item?.hsn || ''}" placeholder="HSN/SAC"></td>
+        <td><input type="number" class="item-qty" value="${qty}" min="0.01" step="any" oninput="calculateItemRow(this)"></td>
+        <td><input type="text" class="item-unit" value="${item?.unit || 'PCS'}" style="width: 60px;"></td>
+        <td><input type="number" class="item-rate" value="${rate}" min="0" step="0.01" oninput="calculateItemRow(this)"></td>
+        <td><input type="number" class="item-disc" value="${disc}" min="0" max="100" step="0.01" oninput="calculateItemRow(this)"></td>
+        <td><input type="text" class="item-taxable" value="0.00" readonly></td>
+        <td><input type="number" class="item-gstrate" value="${item?.gstRate || 18}" min="0" max="100" step="0.01" oninput="calculateItemRow(this)"></td>
+        <td><input type="text" class="item-cgst" value="0.00" readonly></td>
+        <td><input type="text" class="item-sgst" value="0.00" readonly></td>
+        <td><input type="text" class="item-igst" value="0.00" readonly></td>
+        <td><input type="text" class="item-total" value="0.00" readonly></td>
+        <td><button type="button" class="btn-icon delete" onclick="removeInvoiceItem(this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>
+    `;
+
+    tbody.appendChild(tr);
+
+    setupProductCombobox(tr.querySelector('.item-combobox'), 'sales', onProductSelect);
+
+    calculateItemRow(tr.querySelector('.item-qty'));
+    updateInvoiceItemNumbers();
+}
+
+function addInvoiceItem() {
+    addInvoiceItemRow();
+}
+
+function removeInvoiceItem(btn) {
+    btn.closest('tr').remove();
+    updateInvoiceItemNumbers();
+    calculateInvoiceTotals();
+}
+
+function updateInvoiceItemNumbers() {
+    document.querySelectorAll('#invoiceItemsTable tbody tr').forEach((tr, idx) => {
+        tr.cells[0].textContent = idx + 1;
+    });
+}
+
+function onProductSelect(prodOrElem, trContext) {
+    let prod = prodOrElem;
+    let tr = trContext;
+    if (prodOrElem && prodOrElem.tagName) {
+        tr = prodOrElem.closest('tr');
+        if (prodOrElem.options) {
+            const opt = prodOrElem.options[prodOrElem.selectedIndex];
+            if (opt && opt.dataset.product) prod = JSON.parse(opt.dataset.product);
+        }
+    }
+    if (!prod || !tr) return;
+    tr.querySelector('.item-hsn').value = prod.hsn || '';
+    tr.querySelector('.item-unit').value = prod.unit || (prod.type === 'Service' ? 'OTH' : 'PCS');
+    tr.querySelector('.item-rate').value = Number(prod.salePrice || 0);
+    tr.querySelector('.item-gstrate').value = Number(prod.gstRate || 18);
+    calculateItemRow(tr.querySelector('.item-qty'));
+}
+
+function calculateItemRow(input) {
+    const tr = input.closest('tr');
+    const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
+    const rate = parseFloat(tr.querySelector('.item-rate').value) || 0;
+    const discPercent = parseFloat(tr.querySelector('.item-disc').value) || 0;
+    const gstRate = parseFloat(tr.querySelector('.item-gstrate').value) || 0;
+
+    const discountAmt = (qty * rate * discPercent) / 100;
+    const taxable = Math.max(0, qty * rate - discountAmt);
+
+    const supplyState = document.getElementById('placeOfSupply').value || '';
+    const companyState = settings.companyState || '';
+    const isInterstate = supplyState && companyState && supplyState.toLowerCase() !== companyState.toLowerCase();
+
+    let cgstAmt = 0;
+    let sgstAmt = 0;
+    let igstAmt = 0;
+
+    if (isInterstate) {
+        igstAmt = (taxable * gstRate) / 100;
+    } else {
+        cgstAmt = (taxable * (gstRate / 2)) / 100;
+        sgstAmt = (taxable * (gstRate / 2)) / 100;
+    }
+    const total = taxable + cgstAmt + sgstAmt + igstAmt;
+
+    tr.querySelector('.item-taxable').value = taxable.toFixed(2);
+    tr.querySelector('.item-cgst').value = cgstAmt.toFixed(2);
+    tr.querySelector('.item-sgst').value = sgstAmt.toFixed(2);
+    tr.querySelector('.item-igst').value = igstAmt.toFixed(2);
+    tr.querySelector('.item-total').value = total.toFixed(2);
+
+    calculateInvoiceTotals();
+}
+
+function calculateInvoiceTotals() {
+    let subtotal = 0;
+    let totalCgst = 0;
+    let totalSgst = 0;
+    let totalIgst = 0;
+
+    document.querySelectorAll('#invoiceItemsTable tbody tr').forEach(tr => {
+        subtotal += parseFloat(tr.querySelector('.item-taxable').value) || 0;
+        totalCgst += parseFloat(tr.querySelector('.item-cgst').value) || 0;
+        totalSgst += parseFloat(tr.querySelector('.item-sgst').value) || 0;
+        totalIgst += parseFloat(tr.querySelector('.item-igst').value) || 0;
+    });
+
+    const discount = parseFloat(document.getElementById('invoiceDiscount').value) || 0;
+    const roundOff = parseFloat(document.getElementById('invoiceRoundOff').value) || 0;
+    const totalTax = totalCgst + totalSgst + totalIgst;
+    const grandTotal = Math.max(0, subtotal + totalTax - discount + roundOff);
+
+    document.getElementById('summarySubtotal').textContent = '₹' + formatNumber(subtotal);
+    document.getElementById('summaryCgst').textContent = '₹' + formatNumber(totalCgst);
+    document.getElementById('summarySgst').textContent = '₹' + formatNumber(totalSgst);
+    document.getElementById('summaryIgst').textContent = '₹' + formatNumber(totalIgst);
+    document.getElementById('summaryTotalTax').textContent = '₹' + formatNumber(totalTax);
+    document.getElementById('summaryDiscount').textContent = '₹' + formatNumber(discount);
+    document.getElementById('summaryRoundOff').textContent = '₹' + formatNumber(roundOff);
+    document.getElementById('summaryGrandTotal').textContent = '₹' + formatNumber(grandTotal);
+}
+
+async function saveInvoice() {
+    const invoiceNumber = document.getElementById('invoiceNumber').value;
+    const date = document.getElementById('invoiceDate').value;
+    const clientId = document.getElementById('invoiceClient').value;
+    const placeOfSupply = document.getElementById('placeOfSupply').value;
+    const reverseCharge = document.getElementById('reverseCharge').checked;
+    const discount = parseFloat(document.getElementById('invoiceDiscount').value) || 0;
+    const roundOff = parseFloat(document.getElementById('invoiceRoundOff').value) || 0;
+    const notes = document.getElementById('invoiceNotes').value;
+
+    if (!invoiceNumber || !date || !clientId || !placeOfSupply) {
+        showToast('Please fill all required fields', 'error');
+        return;
+    }
+
+    const client = clients.find(c => c.id === clientId);
+    if (!client) {
+        showToast('Please select a valid customer', 'error');
+        return;
+    }
+
+    const items = [];
+    document.querySelectorAll('#invoiceItemsTable tbody tr').forEach(tr => {
+        const prodSelect = tr.querySelector('.item-product');
+        const prodId = prodSelect ? prodSelect.value : '';
+        let pData = products.find(p => p.id === prodId) || null;
+        const searchInput = tr.querySelector('.item-search-input');
+        const rawSearchText = searchInput ? searchInput.value.replace(/^\[(Goods|Service)\]\s*/i, '').trim() : '';
+
+        const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
+        const rate = parseFloat(tr.querySelector('.item-rate').value) || 0;
+        const disc = parseFloat(tr.querySelector('.item-disc').value) || 0;
+        const taxable = parseFloat(tr.querySelector('.item-taxable').value) || 0;
+        const gstRate = parseFloat(tr.querySelector('.item-gstrate').value) || 0;
+        const cgstAmt = parseFloat(tr.querySelector('.item-cgst').value) || 0;
+        const sgstAmt = parseFloat(tr.querySelector('.item-sgst').value) || 0;
+        const igstAmt = parseFloat(tr.querySelector('.item-igst').value) || 0;
+        const total = parseFloat(tr.querySelector('.item-total').value) || 0;
+
+        if (taxable > 0 || qty > 0) {
+            items.push({
+                productId: prodId || '',
+                productName: pData ? pData.name : (rawSearchText || 'Item'),
+                type: pData ? (pData.type || 'Goods') : (searchInput && searchInput.value.includes('[Service]') ? 'Service' : 'Goods'),
+                hsn: tr.querySelector('.item-hsn').value || '',
+                quantity: qty,
+                unit: tr.querySelector('.item-unit').value || 'PCS',
+                rate,
+                discountPercent: disc,
+                discountAmount: (qty * rate * disc) / 100,
+                taxableValue: taxable,
+                gstRate,
+                cgstPercent: cgstAmt > 0 ? gstRate / 2 : 0,
+                cgstAmount: cgstAmt,
+                sgstPercent: sgstAmt > 0 ? gstRate / 2 : 0,
+                sgstAmount: sgstAmt,
+                igstPercent: igstAmt > 0 ? gstRate : 0,
+                igstAmount: igstAmt,
+                totalAmount: total
+            });
+        }
+    });
+
+    if (items.length === 0) {
+        showToast('Please add at least one line item', 'error');
+        return;
+    }
+
+    const subtotal = items.reduce((sum, i) => sum + i.taxableValue, 0);
+    const totalCgst = items.reduce((sum, i) => sum + i.cgstAmount, 0);
+    const totalSgst = items.reduce((sum, i) => sum + i.sgstAmount, 0);
+    const totalIgst = items.reduce((sum, i) => sum + i.igstAmount, 0);
+    const totalTax = totalCgst + totalSgst + totalIgst;
+    const grandTotal = Math.max(0, subtotal + totalTax - discount + roundOff);
+
+    const invoiceData = {
+        invoiceNumber,
+        date,
+        clientId,
+        clientName: client.name,
+        clientGstin: client.gstin || '',
+        placeOfSupply,
+        reverseCharge: reverseCharge ? 'Yes' : 'No',
+        subtotal,
+        totalCgst,
+        totalSgst,
+        totalIgst,
+        totalTax,
+        discount,
+        roundOff,
+        grandTotal,
+        status: 'Confirmed',
+        notes
+    };
+
+    try {
+        if (editingInvoiceId) {
+            await ipcRenderer.invoke('update-invoice', { invoice: { ...invoiceData, id: editingInvoiceId }, items });
+            showToast('Sales Invoice updated successfully', 'success');
+        } else {
+            await ipcRenderer.invoke('save-invoice', { invoice: invoiceData, items });
+            showToast('Sales Invoice created successfully', 'success');
+        }
+        await loadAllData();
+        renderAllTables();
+        closeInvoiceModal();
+    } catch (err) {
+        showToast('Error saving invoice: ' + err.message, 'error');
+    }
+}
+
+async function editInvoice(id) {
+    const inv = invoices.find(i => i.id === id);
+    if (inv) openInvoiceModal(inv);
+}
+
+async function viewInvoice(id) {
+    const invoice = invoices.find(i => i.id === id);
+    if (!invoice) return;
+
+    const items = invoiceItems.filter(i => i.invoiceId === id);
+    const client = clients.find(c => c.id === invoice.clientId) || { name: invoice.clientName };
+
+    try {
+        const result = await ipcRenderer.invoke('generate-invoice-pdf', { invoice, items, settings, client });
+        if (result.success) {
+            showToast('Invoice PDF generated', 'success');
+            await ipcRenderer.invoke('open-file', result.path);
+        } else if (!result.cancelled) {
+            showToast('PDF error: ' + result.error, 'error');
+        }
+    } catch (err) {
+        showToast('Error generating PDF: ' + err.message, 'error');
+    }
+}
+
+async function generateInvoicePDF() {
+    if (editingInvoiceId) viewInvoice(editingInvoiceId);
+}
+
+async function deleteInvoice(id) {
+    if (!confirm('Are you sure you want to delete this invoice? Stock and accounts will be updated.')) return;
+    try {
+        await ipcRenderer.invoke('delete-invoice', id);
+        await loadAllData();
+        renderAllTables();
+        showToast('Invoice deleted', 'success');
+    } catch (err) {
+        showToast('Error deleting invoice: ' + err.message, 'error');
+    }
+}
+
+// ==========================================================
+// 2. PURCHASES (INWARD BILLS)
+// ==========================================================
+function renderPurchasesTable() {
+    const tbody = document.querySelector('#purchasesTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    purchases.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${p.purchaseNumber || '-'}</strong></td>
+            <td>${formatDate(p.date)}</td>
+            <td>${p.supplierName || '-'}</td>
+            <td>${p.supplierBillNo || '-'}</td>
+            <td>${p.supplierGstin || '-'}</td>
+            <td>₹${formatNumber(p.subtotal)}</td>
+            <td>₹${formatNumber(p.totalTax)}</td>
+            <td><strong>₹${formatNumber(p.grandTotal)}</strong></td>
+            <td>
+                <button class="btn-icon" onclick="editPurchase('${p.id}')" title="Edit">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn-icon delete" onclick="deletePurchase('${p.id}')" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function openPurchaseModal(purchase = null) {
+    editingPurchaseId = purchase?.id || null;
+    document.getElementById('purchaseModalTitle').textContent = purchase ? 'Edit Purchase Bill' : 'Record Purchase Bill (Inward)';
+    document.getElementById('purchaseForm').reset();
+    document.getElementById('purchaseItemsTable').querySelector('tbody').innerHTML = '';
+    purchaseItemCounter = 0;
+
+    // Populate suppliers dropdown
+    const suppSelect = document.getElementById('purchaseSupplier');
+    suppSelect.innerHTML = '<option value="">Select Supplier</option>';
+    const suppliers = clients.filter(c => c.partyType !== 'Customer');
+    (suppliers.length > 0 ? suppliers : clients).forEach(c => {
+        const opt = new Option(`${c.name} (${c.gstin || 'Unregistered'})`, c.id);
+        opt.dataset.supplier = JSON.stringify(c);
+        suppSelect.add(opt);
+    });
+
+    if (purchase) {
+        document.getElementById('purchaseNumber').value = purchase.purchaseNumber || '';
+        document.getElementById('purchaseDate').value = purchase.date ? purchase.date.split('T')[0] : new Date().toISOString().split('T')[0];
+        document.getElementById('purchaseSupplier').value = purchase.supplierId || '';
+        document.getElementById('supplierBillNo').value = purchase.supplierBillNo || '';
+        document.getElementById('purchasePlaceOfSupply').value = purchase.placeOfSupply || '';
+        document.getElementById('purchaseDiscount').value = purchase.discount || 0;
+        document.getElementById('purchaseRoundOff').value = purchase.roundOff || 0;
+        document.getElementById('purchaseNotes').value = purchase.notes || '';
+
+        const items = purchaseItems.filter(i => i.purchaseId === purchase.id);
+        items.forEach(item => addPurchaseItemRow(item));
+    } else {
+        const nextNum = await ipcRenderer.invoke('get-next-purchase-number', settings);
+        document.getElementById('purchaseNumber').value = nextNum;
+        document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
+        addPurchaseItemRow();
+    }
+
+    calculatePurchaseTotals();
+    document.getElementById('purchaseModal').classList.add('active');
+}
+
+function closePurchaseModal() {
+    document.getElementById('purchaseModal').classList.remove('active');
+    editingPurchaseId = null;
+}
+
+function onSupplierChange() {
+    const sel = document.getElementById('purchaseSupplier');
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.dataset.supplier) {
+        const supp = JSON.parse(opt.dataset.supplier);
+        if (supp.state) {
+            document.getElementById('purchasePlaceOfSupply').value = supp.state;
+            calculatePurchaseTotals();
+        }
+    }
+}
+
+function addPurchaseItemRow(item = null) {
+    purchaseItemCounter++;
+    const tbody = document.querySelector('#purchaseItemsTable tbody');
+    const tr = document.createElement('tr');
+    tr.dataset.itemId = item?.id || `new_${purchaseItemCounter}`;
+
+    const qty = item?.quantity || 1;
+    const rate = item?.rate || 0;
+    const disc = item?.discountPercent || 0;
+    const defaultSearchVal = item?.productName ? item.productName : '';
+
+    tr.innerHTML = `
+        <td>${tbody.children.length + 1}</td>
+        <td>
+            <div class="combobox-container pitem-combobox">
+                <div class="combobox-input-wrap">
+                    <input type="text" class="pitem-search-input" placeholder="🔍 Search item / service..." autocomplete="off" value="${escapeHtml(defaultSearchVal)}">
+                    <button type="button" class="combobox-arrow-btn" tabindex="-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                </div>
+                <input type="hidden" class="pitem-product" value="${item?.productId || ''}">
+                <div class="combobox-menu" style="display: none;"></div>
+            </div>
+        </td>
+        <td><input type="text" class="pitem-hsn" value="${item?.hsn || ''}" placeholder="HSN/SAC"></td>
+        <td><input type="number" class="pitem-qty" value="${qty}" min="0.01" step="any" oninput="calculatePurchaseItemRow(this)"></td>
+        <td><input type="text" class="pitem-unit" value="${item?.unit || 'PCS'}" style="width: 60px;"></td>
+        <td><input type="number" class="pitem-rate" value="${rate}" min="0" step="0.01" oninput="calculatePurchaseItemRow(this)"></td>
+        <td><input type="number" class="pitem-disc" value="${disc}" min="0" max="100" step="0.01" oninput="calculatePurchaseItemRow(this)"></td>
+        <td><input type="text" class="pitem-taxable" value="0.00" readonly></td>
+        <td><input type="number" class="pitem-gstrate" value="${item?.gstRate || 18}" min="0" max="100" step="0.01" oninput="calculatePurchaseItemRow(this)"></td>
+        <td><input type="text" class="pitem-cgst" value="0.00" readonly></td>
+        <td><input type="text" class="pitem-sgst" value="0.00" readonly></td>
+        <td><input type="text" class="pitem-igst" value="0.00" readonly></td>
+        <td><input type="text" class="pitem-total" value="0.00" readonly></td>
+        <td><button type="button" class="btn-icon delete" onclick="removePurchaseItem(this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>
+    `;
+
+    tbody.appendChild(tr);
+
+    setupProductCombobox(tr.querySelector('.pitem-combobox'), 'purchase', onPurchaseProductSelect);
+
+    calculatePurchaseItemRow(tr.querySelector('.pitem-qty'));
+    updatePurchaseItemNumbers();
+}
+
+function addPurchaseItem() {
+    addPurchaseItemRow();
+}
+
+function removePurchaseItem(btn) {
+    btn.closest('tr').remove();
+    updatePurchaseItemNumbers();
+    calculatePurchaseTotals();
+}
+
+function updatePurchaseItemNumbers() {
+    document.querySelectorAll('#purchaseItemsTable tbody tr').forEach((tr, idx) => {
+        tr.cells[0].textContent = idx + 1;
+    });
+}
+
+function onPurchaseProductSelect(prodOrElem, trContext) {
+    let prod = prodOrElem;
+    let tr = trContext;
+    if (prodOrElem && prodOrElem.tagName) {
+        tr = prodOrElem.closest('tr');
+        if (prodOrElem.options) {
+            const opt = prodOrElem.options[prodOrElem.selectedIndex];
+            if (opt && opt.dataset.product) prod = JSON.parse(opt.dataset.product);
+        }
+    }
+    if (!prod || !tr) return;
+    tr.querySelector('.pitem-hsn').value = prod.hsn || '';
+    tr.querySelector('.pitem-unit').value = prod.unit || (prod.type === 'Service' ? 'OTH' : 'PCS');
+    tr.querySelector('.pitem-rate').value = Number(prod.purchasePrice || prod.salePrice || 0);
+    tr.querySelector('.pitem-gstrate').value = Number(prod.gstRate || 18);
+    calculatePurchaseItemRow(tr.querySelector('.pitem-qty'));
+}
+
+function calculatePurchaseItemRow(input) {
+    const tr = input.closest('tr');
+    const qty = parseFloat(tr.querySelector('.pitem-qty').value) || 0;
+    const rate = parseFloat(tr.querySelector('.pitem-rate').value) || 0;
+    const discPercent = parseFloat(tr.querySelector('.pitem-disc').value) || 0;
+    const gstRate = parseFloat(tr.querySelector('.pitem-gstrate').value) || 0;
+
+    const discountAmt = (qty * rate * discPercent) / 100;
+    const taxable = Math.max(0, qty * rate - discountAmt);
+
+    const supplyState = document.getElementById('purchasePlaceOfSupply').value || '';
+    const companyState = settings.companyState || '';
+    const isInterstate = supplyState && companyState && supplyState.toLowerCase() !== companyState.toLowerCase();
+
+    let cgstAmt = 0;
+    let sgstAmt = 0;
+    let igstAmt = 0;
+
+    if (isInterstate) {
+        igstAmt = (taxable * gstRate) / 100;
+    } else {
+        cgstAmt = (taxable * (gstRate / 2)) / 100;
+        sgstAmt = (taxable * (gstRate / 2)) / 100;
+    }
+    const total = taxable + cgstAmt + sgstAmt + igstAmt;
+
+    tr.querySelector('.pitem-taxable').value = taxable.toFixed(2);
+    tr.querySelector('.pitem-cgst').value = cgstAmt.toFixed(2);
+    tr.querySelector('.pitem-sgst').value = sgstAmt.toFixed(2);
+    tr.querySelector('.pitem-igst').value = igstAmt.toFixed(2);
+    tr.querySelector('.pitem-total').value = total.toFixed(2);
+
+    calculatePurchaseTotals();
+}
+
+function calculatePurchaseTotals() {
+    let subtotal = 0;
+    let totalCgst = 0;
+    let totalSgst = 0;
+    let totalIgst = 0;
+
+    document.querySelectorAll('#purchaseItemsTable tbody tr').forEach(tr => {
+        subtotal += parseFloat(tr.querySelector('.pitem-taxable').value) || 0;
+        totalCgst += parseFloat(tr.querySelector('.pitem-cgst').value) || 0;
+        totalSgst += parseFloat(tr.querySelector('.pitem-sgst').value) || 0;
+        totalIgst += parseFloat(tr.querySelector('.pitem-igst').value) || 0;
+    });
+
+    const discount = parseFloat(document.getElementById('purchaseDiscount').value) || 0;
+    const roundOff = parseFloat(document.getElementById('purchaseRoundOff').value) || 0;
+    const totalTax = totalCgst + totalSgst + totalIgst;
+    const grandTotal = Math.max(0, subtotal + totalTax - discount + roundOff);
+
+    document.getElementById('purchaseSummarySubtotal').textContent = '₹' + formatNumber(subtotal);
+    document.getElementById('purchaseSummaryCgst').textContent = '₹' + formatNumber(totalCgst);
+    document.getElementById('purchaseSummarySgst').textContent = '₹' + formatNumber(totalSgst);
+    document.getElementById('purchaseSummaryIgst').textContent = '₹' + formatNumber(totalIgst);
+    document.getElementById('purchaseSummaryTotalTax').textContent = '₹' + formatNumber(totalTax);
+    document.getElementById('purchaseSummaryDiscount').textContent = '₹' + formatNumber(discount);
+    document.getElementById('purchaseSummaryRoundOff').textContent = '₹' + formatNumber(roundOff);
+    document.getElementById('purchaseSummaryGrandTotal').textContent = '₹' + formatNumber(grandTotal);
+}
+
+async function savePurchase() {
+    const purchaseNumber = document.getElementById('purchaseNumber').value;
+    const date = document.getElementById('purchaseDate').value;
+    const supplierId = document.getElementById('purchaseSupplier').value;
+    const supplierBillNo = document.getElementById('supplierBillNo').value;
+    const placeOfSupply = document.getElementById('purchasePlaceOfSupply').value;
+    const discount = parseFloat(document.getElementById('purchaseDiscount').value) || 0;
+    const roundOff = parseFloat(document.getElementById('purchaseRoundOff').value) || 0;
+    const notes = document.getElementById('purchaseNotes').value;
+
+    if (!purchaseNumber || !date || !supplierId || !placeOfSupply) {
+        showToast('Please fill all required fields', 'error');
+        return;
+    }
+
+    const supplier = clients.find(c => c.id === supplierId);
+    if (!supplier) {
+        showToast('Please select a valid supplier', 'error');
+        return;
+    }
+
+    const items = [];
+    document.querySelectorAll('#purchaseItemsTable tbody tr').forEach(tr => {
+        const prodSelect = tr.querySelector('.pitem-product');
+        const prodId = prodSelect ? prodSelect.value : '';
+        let pData = products.find(p => p.id === prodId) || null;
+        const searchInput = tr.querySelector('.pitem-search-input');
+        const rawSearchText = searchInput ? searchInput.value.replace(/^\[(Goods|Service)\]\s*/i, '').trim() : '';
+
+        const qty = parseFloat(tr.querySelector('.pitem-qty').value) || 0;
+        const rate = parseFloat(tr.querySelector('.pitem-rate').value) || 0;
+        const disc = parseFloat(tr.querySelector('.pitem-disc').value) || 0;
+        const taxable = parseFloat(tr.querySelector('.pitem-taxable').value) || 0;
+        const gstRate = parseFloat(tr.querySelector('.pitem-gstrate').value) || 0;
+        const cgstAmt = parseFloat(tr.querySelector('.pitem-cgst').value) || 0;
+        const sgstAmt = parseFloat(tr.querySelector('.pitem-sgst').value) || 0;
+        const igstAmt = parseFloat(tr.querySelector('.pitem-igst').value) || 0;
+        const total = parseFloat(tr.querySelector('.pitem-total').value) || 0;
+
+        if (taxable > 0 || qty > 0) {
+            items.push({
+                productId: prodId || '',
+                productName: pData ? pData.name : (rawSearchText || 'Item'),
+                type: pData ? (pData.type || 'Goods') : (searchInput && searchInput.value.includes('[Service]') ? 'Service' : 'Goods'),
+                hsn: tr.querySelector('.pitem-hsn').value || '',
+                quantity: qty,
+                unit: tr.querySelector('.pitem-unit').value || 'PCS',
+                rate,
+                discountPercent: disc,
+                discountAmount: (qty * rate * disc) / 100,
+                taxableValue: taxable,
+                gstRate,
+                cgstPercent: cgstAmt > 0 ? gstRate / 2 : 0,
+                cgstAmount: cgstAmt,
+                sgstPercent: sgstAmt > 0 ? gstRate / 2 : 0,
+                sgstAmount: sgstAmt,
+                igstPercent: igstAmt > 0 ? gstRate : 0,
+                igstAmount: igstAmt,
+                totalAmount: total
+            });
+        }
+    });
+
+    if (items.length === 0) {
+        showToast('Please add at least one line item', 'error');
+        return;
+    }
+
+    const subtotal = items.reduce((sum, i) => sum + i.taxableValue, 0);
+    const totalCgst = items.reduce((sum, i) => sum + i.cgstAmount, 0);
+    const totalSgst = items.reduce((sum, i) => sum + i.sgstAmount, 0);
+    const totalIgst = items.reduce((sum, i) => sum + i.igstAmount, 0);
+    const totalTax = totalCgst + totalSgst + totalIgst;
+    const grandTotal = Math.max(0, subtotal + totalTax - discount + roundOff);
+
+    const purchaseData = {
+        purchaseNumber,
+        date,
+        supplierId,
+        supplierName: supplier.name,
+        supplierGstin: supplier.gstin || '',
+        supplierBillNo,
+        placeOfSupply,
+        subtotal,
+        totalCgst,
+        totalSgst,
+        totalIgst,
+        totalTax,
+        discount,
+        roundOff,
+        grandTotal,
+        status: 'Received',
+        notes
+    };
+
+    try {
+        if (editingPurchaseId) {
+            await ipcRenderer.invoke('update-purchase', { purchase: { ...purchaseData, id: editingPurchaseId }, items });
+            showToast('Purchase bill updated successfully', 'success');
+        } else {
+            await ipcRenderer.invoke('save-purchase', { purchase: purchaseData, items });
+            showToast('Purchase bill recorded successfully', 'success');
+        }
+        await loadAllData();
+        renderAllTables();
+        closePurchaseModal();
+    } catch (err) {
+        showToast('Error saving purchase: ' + err.message, 'error');
+    }
+}
+
+async function editPurchase(id) {
+    const p = purchases.find(item => item.id === id);
+    if (p) openPurchaseModal(p);
+}
+
+async function deletePurchase(id) {
+    if (!confirm('Are you sure you want to delete this purchase bill? Stock and accounts will be updated.')) return;
+    try {
+        await ipcRenderer.invoke('delete-purchase', id);
+        await loadAllData();
+        renderAllTables();
+        showToast('Purchase bill deleted', 'success');
+    } catch (err) {
+        showToast('Error deleting purchase: ' + err.message, 'error');
+    }
+}
+
+// ==========================================================
+// 3. PRODUCTS & SERVICES MASTER (GOODS VS SERVICES)
+// ==========================================================
+function renderProductsTable() {
+    const tbody = document.querySelector('#productsTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    let list = products;
+    if (currentProductFilter === 'Goods') {
+        list = products.filter(p => (p.type || 'Goods') === 'Goods');
+    } else if (currentProductFilter === 'Service') {
+        list = products.filter(p => (p.type || '').toLowerCase().includes('service'));
+    }
+
+    list.forEach(p => {
+        const isServ = (p.type || '').toLowerCase().includes('service');
+        const typeBadge = isServ ? '<span class="type-badge service">Service</span>' : '<span class="type-badge goods">Goods</span>';
+        const openStockDisplay = isServ ? 'N/A' : (p.openingStock || 0);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${typeBadge}</td>
+            <td><strong>${p.name || '-'}</strong></td>
+            <td>${p.hsn || '-'}</td>
+            <td>${p.unit || '-'}</td>
+            <td>${p.gstRate || 0}%</td>
+            <td>₹${formatNumber(p.salePrice)}</td>
+            <td>₹${formatNumber(p.purchasePrice || 0)}</td>
+            <td>${openStockDisplay}</td>
+            <td>${p.description || '-'}</td>
+            <td>
+                <button class="btn-icon" onclick="editProduct('${p.id}')" title="Edit / Alter">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn-icon delete" onclick="deleteProduct('${p.id}')" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function handleProductTypeToggle(type) {
+    const isService = type === 'Service';
+    document.getElementById('typeGoodsLabel').classList.toggle('active', !isService);
+    document.getElementById('typeServiceLabel').classList.toggle('active', isService);
+
+    document.getElementById('productNameLabel').textContent = isService ? 'Service Name *' : 'Item Name *';
+    document.getElementById('productHsnLabel').textContent = isService ? 'SAC Code *' : 'HSN Code *';
+    document.getElementById('productHsn').placeholder = isService ? 'e.g. 9983' : 'e.g. 8471';
+
+    const stockGroup = document.getElementById('openingStockGroup');
+    if (isService) {
+        stockGroup.style.display = 'none';
+        document.getElementById('productUnit').value = 'OTH';
+    } else {
+        stockGroup.style.display = 'block';
+        if (document.getElementById('productUnit').value === 'OTH') {
+            document.getElementById('productUnit').value = 'PCS';
+        }
+    }
+}
+
+function openProductModal(product = null) {
+    editingProductId = product?.id || null;
+    document.getElementById('productModalTitle').textContent = product ? 'Edit / Alter Item' : 'Add Item / Service';
+    document.getElementById('productForm').reset();
+    document.getElementById('productId').value = product?.id || '';
+
+    const pType = product?.type || 'Goods';
+    const typeRadios = document.querySelectorAll('input[name="type"]');
+    typeRadios.forEach(r => {
+        r.checked = (r.value === pType);
+    });
+    handleProductTypeToggle(pType);
+
+    if (product) {
+        document.getElementById('productName').value = product.name || '';
+        document.getElementById('productHsn').value = product.hsn || '';
+        document.getElementById('productUnit').value = product.unit || (pType === 'Service' ? 'OTH' : 'PCS');
+        document.getElementById('productGstRate').value = product.gstRate || 0;
+        document.getElementById('productSalePrice').value = product.salePrice || 0;
+        document.getElementById('productPurchasePrice').value = product.purchasePrice || 0;
+        document.getElementById('productOpeningStock').value = product.openingStock || 0;
+        document.getElementById('productDescription').value = product.description || '';
+    } else {
+        document.getElementById('productUnit').value = 'PCS';
+        document.getElementById('productGstRate').value = 18;
+        document.getElementById('productOpeningStock').value = 0;
+    }
+
+    document.getElementById('productModal').classList.add('active');
+    setTimeout(() => {
+        const nameInput = document.getElementById('productName');
+        if (nameInput) {
+            nameInput.focus();
+            nameInput.select();
+        }
+    }, 60);
+}
+
+function closeProductModal() {
+    document.getElementById('productModal').classList.remove('active');
+    editingProductId = null;
+}
+
+async function saveProduct(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const product = Object.fromEntries(formData);
+
+    product.type = product.type || 'Goods';
+    product.gstRate = parseFloat(product.gstRate) || 0;
+    product.salePrice = parseFloat(product.salePrice) || 0;
+    product.purchasePrice = parseFloat(product.purchasePrice) || 0;
+    product.openingStock = product.type === 'Service' ? 0 : (parseFloat(product.openingStock) || 0);
+    product.cgst = product.gstRate / 2;
+    product.sgst = product.gstRate / 2;
+    product.igst = product.gstRate;
+
+    try {
+        if (editingProductId) {
+            await ipcRenderer.invoke('update-product', { ...product, id: editingProductId });
+            showToast('Item updated successfully', 'success');
+        } else {
+            await ipcRenderer.invoke('add-product', product);
+            showToast('Item added successfully', 'success');
+        }
+        await loadAllData();
+        renderAllTables();
+        closeProductModal();
+    } catch (err) {
+        showToast('Error saving item: ' + err.message, 'error');
+    }
+}
+
+async function editProduct(id) {
+    const p = products.find(prod => prod.id === id);
+    if (p) openProductModal(p);
+}
+
+async function deleteProduct(id) {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    try {
+        await ipcRenderer.invoke('delete-product', id);
+        await loadAllData();
+        renderAllTables();
+        showToast('Item deleted', 'success');
+    } catch (err) {
+        showToast('Error deleting item: ' + err.message, 'error');
+    }
+}
+
+// ==========================================================
+// 4. STOCK REGISTER (INVENTORY VALUATION)
+// ==========================================================
+function renderStockRegisterTable() {
+    const tbody = document.querySelector('#stockRegisterTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const goodsItems = stockRegister.filter(i => i.type === 'Goods');
+    const inStock = goodsItems.filter(i => i.closingStock > 0);
+    const lowStock = goodsItems.filter(i => i.closingStock <= 0 || i.closingStock < 5);
+    const totalVal = goodsItems.reduce((sum, i) => sum + (Number(i.closingValue) || 0), 0);
+
+    document.getElementById('stockTotalItems').textContent = goodsItems.length;
+    document.getElementById('stockInStockItems').textContent = inStock.length;
+    document.getElementById('stockLowStockItems').textContent = lowStock.length;
+    document.getElementById('stockTotalValue').textContent = '₹' + formatNumber(totalVal);
+
+    stockRegister.forEach(item => {
+        let badgeClass = 'in-stock';
+        if (item.type === 'Service') {
+            badgeClass = 'service';
+        } else if (item.closingStock <= 0) {
+            badgeClass = 'out-of-stock';
+        } else if (item.closingStock < 5) {
+            badgeClass = 'low-stock';
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${item.name}</strong> ${item.type === 'Service' ? '<span class="type-badge service">Service</span>' : ''}</td>
+            <td>${item.hsn || '-'}</td>
+            <td>${item.unit || '-'}</td>
+            <td>${item.type === 'Service' ? 'N/A' : item.openingStock}</td>
+            <td>${item.type === 'Service' ? 'N/A' : item.inwardQty}</td>
+            <td>${item.type === 'Service' ? 'N/A' : item.outwardQty}</td>
+            <td><strong>${item.type === 'Service' ? 'N/A' : item.closingStock}</strong></td>
+            <td>₹${formatNumber(item.purchaseRate)}</td>
+            <td><strong>₹${formatNumber(item.closingValue)}</strong></td>
+            <td><span class="stock-status ${badgeClass}">${item.status}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function exportStockToExcel() {
+    exportExcel('Products');
+}
+
+// ==========================================================
+// 5. PARTIES (CUSTOMERS & SUPPLIERS)
+// ==========================================================
+function renderClientsTable() {
+    const tbody = document.querySelector('#clientsTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    let list = clients;
+    if (currentPartyFilter === 'Customer') {
+        list = clients.filter(c => c.partyType !== 'Supplier');
+    } else if (currentPartyFilter === 'Supplier') {
+        list = clients.filter(c => c.partyType !== 'Customer');
+    }
+
+    list.forEach(c => {
+        const tr = document.createElement('tr');
+        const openBal = Number(c.openingBalance) || 0;
+        const balBadge = openBal > 0 ? `₹${formatNumber(openBal)} ${c.balanceType || 'Dr'}` : '₹0.00';
+
+        tr.innerHTML = `
+            <td><strong>${c.name || '-'}</strong></td>
+            <td><span class="badge ${c.partyType === 'Supplier' ? 'orange' : 'blue'}">${c.partyType || 'Customer'}</span></td>
+            <td>${c.gstin || '-'}</td>
+            <td>${c.pan || '-'}</td>
+            <td>${c.city || '-'}</td>
+            <td>${c.state || '-'}</td>
+            <td>${c.phone || '-'}</td>
+            <td>${balBadge}</td>
+            <td>₹${formatNumber(c.creditLimit || 0)}</td>
+            <td>
+                <button class="btn-icon" onclick="editClient('${c.id}')" title="Edit / Alter">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn-icon delete" onclick="deleteClient('${c.id}')" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function openClientModal(client = null) {
+    editingClientId = client?.id || null;
+    document.getElementById('clientModalTitle').textContent = client ? 'Edit / Alter Party' : 'Add Party (Customer / Supplier)';
+    document.getElementById('clientForm').reset();
+    document.getElementById('clientId').value = client?.id || '';
+
+    if (client) {
+        document.getElementById('clientName').value = client.name || '';
+        document.getElementById('clientPartyType').value = client.partyType || 'Customer';
+        document.getElementById('clientOpeningBalance').value = client.openingBalance || 0;
+        document.getElementById('clientBalanceType').value = client.balanceType || (client.partyType === 'Supplier' ? 'Cr' : 'Dr');
+        document.getElementById('clientGstin').value = client.gstin || '';
+        document.getElementById('clientPan').value = client.pan || '';
+        document.getElementById('clientAddress1').value = client.address1 || '';
+        document.getElementById('clientAddress2').value = client.address2 || '';
+        document.getElementById('clientCity').value = client.city || '';
+        document.getElementById('clientState').value = client.state || '';
+        document.getElementById('clientStateCode').value = client.stateCode || '';
+        document.getElementById('clientPincode').value = client.pincode || '';
+        document.getElementById('clientPhone').value = client.phone || '';
+        document.getElementById('clientEmail').value = client.email || '';
+        document.getElementById('clientContactPerson').value = client.contactPerson || '';
+        document.getElementById('clientCreditLimit').value = client.creditLimit || 0;
+    } else {
+        document.getElementById('clientPartyType').value = 'Customer';
+        document.getElementById('clientBalanceType').value = 'Dr';
+        document.getElementById('clientOpeningBalance').value = 0;
+        document.getElementById('clientCreditLimit').value = 0;
+    }
+
+    document.getElementById('clientModal').classList.add('active');
+    setTimeout(() => {
+        const nameInput = document.getElementById('clientName');
+        if (nameInput) {
+            nameInput.focus();
+            nameInput.select();
+        }
+    }, 60);
+}
+
+function closeClientModal() {
+    document.getElementById('clientModal').classList.remove('active');
+    editingClientId = null;
+}
+
+async function saveClient(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const client = Object.fromEntries(formData);
+
+    client.partyType = client.partyType || 'Customer';
+    client.openingBalance = parseFloat(client.openingBalance) || 0;
+    client.creditLimit = parseFloat(client.creditLimit) || 0;
+    client.paymentTerms = parseInt(client.paymentTerms) || 30;
+
+    try {
+        if (editingClientId) {
+            await ipcRenderer.invoke('update-client', { ...client, id: editingClientId });
+            showToast('Party updated successfully', 'success');
+        } else {
+            await ipcRenderer.invoke('add-client', client);
+            showToast('Party created successfully', 'success');
+        }
+        await loadAllData();
+        renderAllTables();
+        closeClientModal();
+    } catch (err) {
+        showToast('Error saving party: ' + err.message, 'error');
+    }
+}
+
+async function editClient(id) {
+    const c = clients.find(client => client.id === id);
+    if (c) openClientModal(c);
+}
+
+async function deleteClient(id) {
+    if (!confirm('Are you sure you want to delete this party?')) return;
+    try {
+        await ipcRenderer.invoke('delete-client', id);
+        await loadAllData();
+        renderAllTables();
+        showToast('Party deleted', 'success');
+    } catch (err) {
+        showToast('Error deleting party: ' + err.message, 'error');
+    }
+}
+
+// ==========================================================
+// 6. VOUCHERS (RECEIPT, PAYMENT, CONTRA, JOURNAL)
+// ==========================================================
+function renderVouchersTable() {
+    const tbody = document.querySelector('#vouchersTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    let list = vouchers;
+    if (currentVoucherFilter !== 'all') {
+        list = vouchers.filter(v => (v.type || '').toLowerCase() === currentVoucherFilter.toLowerCase());
+    }
+
+    list.forEach(v => {
+        const typeClass = (v.type || 'payment').toLowerCase();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${v.voucherNumber || '-'}</strong></td>
+            <td>${formatDate(v.date)}</td>
+            <td><span class="voucher-badge ${typeClass}">${v.type || 'Payment'}</span></td>
+            <td>${v.mode || 'N/A'}</td>
+            <td>${v.debitLedger || '-'}</td>
+            <td>${v.creditLedger || '-'}</td>
+            <td><strong>₹${formatNumber(v.amount)}</strong></td>
+            <td>${v.referenceNo || '-'}</td>
+            <td>${v.narration || '-'}</td>
+            <td>
+                <button class="btn-icon delete" onclick="deleteVoucher('${v.id}')" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function openVoucherModal() {
+    editingVoucherId = null;
+    document.getElementById('voucherForm').reset();
+    document.getElementById('voucherDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('voucherType').value = 'Payment';
+
+    populateVoucherLedgerDropdowns();
+    onVoucherTypeChange();
+
+    document.getElementById('voucherModal').classList.add('active');
+    setTimeout(() => {
+        const amtInput = document.getElementById('voucherAmount');
+        if (amtInput) {
+            amtInput.focus();
+            amtInput.select();
+        }
+    }, 60);
+}
+
+function closeVoucherModal() {
+    document.getElementById('voucherModal').classList.remove('active');
+    editingVoucherId = null;
+}
+
+function populateVoucherLedgerDropdowns() {
+    const partyLedgerSelect = document.getElementById('voucherPartyLedger');
+    const journalDr = document.getElementById('journalDebit');
+    const journalCr = document.getElementById('journalCredit');
+
+    // Combine all ledgers + parties
+    const allLedgerNames = new Set();
+    ledgers.forEach(l => allLedgerNames.add(l.name));
+    clients.forEach(c => allLedgerNames.add(c.name));
+
+    const sortedNames = Array.from(allLedgerNames).sort((a, b) => a.localeCompare(b));
+
+    const buildOptions = () => sortedNames.map(name => `<option value="${name}">${name}</option>`).join('');
+
+    if (partyLedgerSelect) {
+        partyLedgerSelect.innerHTML = '<option value="">Select Ledger / Party</option>' + buildOptions();
+    }
+    if (journalDr) {
+        journalDr.innerHTML = '<option value="">Select Debit Account</option>' + buildOptions();
+    }
+    if (journalCr) {
+        journalCr.innerHTML = '<option value="">Select Credit Account</option>' + buildOptions();
+    }
+}
+
+async function onVoucherTypeChange() {
+    const type = document.getElementById('voucherType').value;
+    const modeRow = document.getElementById('voucherModeRow');
+    const contraRow = document.getElementById('contraRow');
+    const journalRow = document.getElementById('journalRow');
+
+    const nextNum = await ipcRenderer.invoke('get-next-voucher-number', type);
+    document.getElementById('voucherNumber').value = nextNum;
+
+    if (type === 'Contra') {
+        modeRow.style.display = 'none';
+        contraRow.style.display = 'grid';
+        journalRow.style.display = 'none';
+        document.getElementById('voucherPartyLedger').required = false;
+    } else if (type === 'Journal') {
+        modeRow.style.display = 'none';
+        contraRow.style.display = 'none';
+        journalRow.style.display = 'grid';
+        document.getElementById('voucherPartyLedger').required = false;
+    } else {
+        // Payment or Receipt
+        modeRow.style.display = 'grid';
+        contraRow.style.display = 'none';
+        journalRow.style.display = 'none';
+        document.getElementById('voucherPartyLedger').required = true;
+
+        if (type === 'Payment') {
+            document.getElementById('voucherModeLabel').textContent = 'Paid Via (Cash / Bank) *';
+            document.getElementById('voucherLedgerLabel').textContent = 'Paid To (Party / Expense Ledger) *';
+        } else {
+            document.getElementById('voucherModeLabel').textContent = 'Received In (Cash / Bank) *';
+            document.getElementById('voucherLedgerLabel').textContent = 'Received From (Customer / Income) *';
+        }
+    }
+}
+
+async function saveVoucher(e) {
+    e.preventDefault();
+    const type = document.getElementById('voucherType').value;
+    const voucherNumber = document.getElementById('voucherNumber').value;
+    const date = document.getElementById('voucherDate').value;
+    const amount = parseFloat(document.getElementById('voucherAmount').value) || 0;
+    const referenceNo = document.getElementById('voucherRefNo').value || '';
+    const narration = document.getElementById('voucherNarration').value || '';
+
+    if (!voucherNumber || !date || amount <= 0) {
+        showToast('Please enter a valid date and amount', 'error');
+        return;
+    }
+
+    let mode = '';
+    let debitLedger = '';
+    let creditLedger = '';
+
+    if (type === 'Payment') {
+        mode = document.getElementById('voucherMode').value;
+        const target = document.getElementById('voucherPartyLedger').value;
+        if (!target) { showToast('Please select the party or ledger', 'error'); return; }
+        debitLedger = target;
+        creditLedger = mode === 'Cash' ? 'Cash' : 'Bank Account';
+    } else if (type === 'Receipt') {
+        mode = document.getElementById('voucherMode').value;
+        const target = document.getElementById('voucherPartyLedger').value;
+        if (!target) { showToast('Please select the party or ledger', 'error'); return; }
+        debitLedger = mode === 'Cash' ? 'Cash' : 'Bank Account';
+        creditLedger = target;
+    } else if (type === 'Contra') {
+        debitLedger = document.getElementById('contraDebit').value;
+        creditLedger = document.getElementById('contraCredit').value;
+        mode = debitLedger === 'Bank Account' ? 'Bank' : 'Cash';
+        if (debitLedger === creditLedger) {
+            showToast('Contra requires different accounts for debit and credit', 'error');
+            return;
+        }
+    } else if (type === 'Journal') {
+        debitLedger = document.getElementById('journalDebit').value;
+        creditLedger = document.getElementById('journalCredit').value;
+        mode = 'Journal';
+        if (!debitLedger || !creditLedger) {
+            showToast('Please select both debit and credit ledgers', 'error');
+            return;
+        }
+    }
+
+    const voucherData = {
+        voucherNumber,
+        date,
+        type,
+        mode,
+        debitLedger,
+        creditLedger,
+        amount,
+        referenceNo,
+        narration
+    };
+
+    try {
+        await ipcRenderer.invoke('save-voucher', voucherData);
+        showToast(`${type} voucher recorded successfully`, 'success');
+        await loadAllData();
+        renderAllTables();
+        closeVoucherModal();
+    } catch (err) {
+        showToast('Error saving voucher: ' + err.message, 'error');
+    }
+}
+
+async function deleteVoucher(id) {
+    if (!confirm('Are you sure you want to delete this voucher? Accounts and bank balances will be recalculated.')) return;
+    try {
+        await ipcRenderer.invoke('delete-voucher', id);
+        await loadAllData();
+        renderAllTables();
+        showToast('Voucher deleted', 'success');
+    } catch (err) {
+        showToast('Error deleting voucher: ' + err.message, 'error');
+    }
+}
+
+// ==========================================================
+// 7. CASH BOOK & BANK BOOK
+// ==========================================================
+function renderCashBankRegister() {
+    const tbody = document.querySelector('#cashBankTable tbody');
+    if (!tbody || !financialReports) return;
+    tbody.innerHTML = '';
+
+    const isCash = currentCashBankBook === 'cash';
+    const book = isCash ? financialReports.cashBook : financialReports.bankBook;
+    if (!book) return;
+
+    document.getElementById('cbOpeningBalance').textContent = '₹' + formatNumber(book.openingBalance);
+    document.getElementById('cbTotalReceipts').textContent = '₹' + formatNumber(book.totalReceipts);
+    document.getElementById('cbTotalPayments').textContent = '₹' + formatNumber(book.totalPayments);
+    document.getElementById('cbClosingBalance').textContent = '₹' + formatNumber(book.closingBalance);
+
+    book.transactions.forEach(tx => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${formatDate(tx.date)}</td>
+            <td><strong>${tx.voucherNumber || '-'}</strong></td>
+            <td><span class="voucher-badge ${tx.type.toLowerCase()}">${tx.type}</span></td>
+            <td>${tx.particulars}</td>
+            <td style="color: #15803d; font-weight: 600;">${tx.debit > 0 ? `₹${formatNumber(tx.debit)}` : '-'}</td>
+            <td style="color: #b91c1c; font-weight: 600;">${tx.credit > 0 ? `₹${formatNumber(tx.credit)}` : '-'}</td>
+            <td><strong>₹${formatNumber(tx.balance)}</strong></td>
+            <td>${tx.narration || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ==========================================================
+// 8. ACCOUNTS & LEDGERS (STANDARD 28 CORE GROUPS)
+// ==========================================================
+function renderLedgersTable() {
+    const tbody = document.querySelector('#ledgersTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    ledgers.forEach(l => {
+        const grp = ledgerGroups.find(g => g.name === l.groupName);
+        const nature = grp ? grp.nature : 'General';
+        const isDefault = l.isDefault === 'Yes';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${l.name}</strong></td>
+            <td>${l.groupName}</td>
+            <td><span class="badge ${nature === 'Assets' ? 'blue' : nature === 'Liabilities' ? 'purple' : nature === 'Income' ? 'green' : 'orange'}">${nature}</span></td>
+            <td>₹${formatNumber(l.openingBalance || 0)}</td>
+            <td><strong>${l.balanceType || 'Dr'}</strong></td>
+            <td>${l.description || '-'}</td>
+            <td>
+                <button class="btn-icon" onclick="editLedger('${l.id}')" title="Edit / Alter">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                ${!isDefault ? `
+                <button class="btn-icon delete" onclick="deleteLedger('${l.id}')" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>` : ''}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function renderGroupsTable() {
+    const tbody = document.querySelector('#groupsTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    ledgerGroups.forEach(g => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${g.name}</strong></td>
+            <td>${g.parentGroup ? `↳ ${g.parentGroup}` : '<em style="color:#64748b;">Primary Group</em>'}</td>
+            <td><span class="badge ${g.nature === 'Assets' ? 'blue' : g.nature === 'Liabilities' ? 'purple' : g.nature === 'Income' ? 'green' : 'orange'}">${g.nature}</span></td>
+            <td>${g.isDefault === 'Yes' ? 'Standard Core' : 'User Defined'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function openLedgerModal(ledger = null) {
+    editingLedgerId = ledger?.id || null;
+    document.getElementById('ledgerModalTitle').textContent = ledger ? 'Alter Ledger Master' : 'Create Ledger Master';
+    document.getElementById('ledgerForm').reset();
+    document.getElementById('ledgerId').value = ledger?.id || '';
+
+    populateLedgerGroupDropdown();
+
+    if (ledger) {
+        document.getElementById('ledgerName').value = ledger.name || '';
+        document.getElementById('ledgerGroupName').value = ledger.groupName || '';
+        document.getElementById('ledgerOpeningBalance').value = ledger.openingBalance || 0;
+        document.getElementById('ledgerBalanceType').value = ledger.balanceType || 'Dr';
+        document.getElementById('ledgerDescription').value = ledger.description || '';
+    } else {
+        document.getElementById('ledgerBalanceType').value = 'Dr';
+        document.getElementById('ledgerOpeningBalance').value = 0;
+    }
+
+    document.getElementById('ledgerModal').classList.add('active');
+    setTimeout(() => {
+        const nameInput = document.getElementById('ledgerName');
+        if (nameInput) {
+            nameInput.focus();
+            nameInput.select();
+        }
+    }, 60);
+}
+
+function closeLedgerModal() {
+    document.getElementById('ledgerModal').classList.remove('active');
+    editingLedgerId = null;
+}
+
+async function saveLedger(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const ledger = Object.fromEntries(formData);
+
+    ledger.openingBalance = parseFloat(ledger.openingBalance) || 0;
+    ledger.balanceType = ledger.balanceType || 'Dr';
+
+    try {
+        if (editingLedgerId) {
+            await ipcRenderer.invoke('update-ledger', { ...ledger, id: editingLedgerId });
+            showToast('Ledger updated successfully', 'success');
+        } else {
+            await ipcRenderer.invoke('add-ledger', ledger);
+            showToast('Ledger created successfully', 'success');
+        }
+        await loadAllData();
+        renderAllTables();
+        closeLedgerModal();
+    } catch (err) {
+        showToast('Error saving ledger: ' + err.message, 'error');
+    }
+}
+
+async function editLedger(id) {
+    const l = ledgers.find(item => item.id === id);
+    if (l) openLedgerModal(l);
+}
+
+async function deleteLedger(id) {
+    if (!confirm('Are you sure you want to delete this ledger?')) return;
+    try {
+        await ipcRenderer.invoke('delete-ledger', id);
+        await loadAllData();
+        renderAllTables();
+        showToast('Ledger deleted', 'success');
+    } catch (err) {
+        showToast('Error deleting ledger: ' + err.message, 'error');
+    }
+}
+
+// ==========================================================
+// 9. FINANCIAL STATEMENTS (FINAL ACCOUNTS)
+// Trial Balance, Trading Account, Profit & Loss Account, Balance Sheet
+// ==========================================================
+function showFinancialSheet(sheetName) {
+    const views = ['trialBalance', 'tradingAccount', 'profitLoss', 'balanceSheet'];
+    views.forEach(v => {
+        const el = document.getElementById(v + 'View');
+        if (el) el.style.display = (v === sheetName) ? 'block' : 'none';
+    });
+}
+
+function renderFinancialStatements() {
+    if (!financialReports) return;
+
+    // 1. Trial Balance
+    const tb = financialReports.trialBalance;
+    const tbTbody = document.querySelector('#trialBalanceTable tbody');
+    if (tbTbody && tb) {
+        tbTbody.innerHTML = '';
+        tb.rows.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${r.ledgerName}</strong></td>
+                <td>${r.groupName}</td>
+                <td><span class="badge ${r.nature === 'Assets' ? 'blue' : r.nature === 'Liabilities' ? 'purple' : r.nature === 'Income' ? 'green' : 'orange'}">${r.nature}</span></td>
+                <td style="text-align: right;">${r.debit > 0 ? `₹${formatNumber(r.debit)}` : '-'}</td>
+                <td style="text-align: right;">${r.credit > 0 ? `₹${formatNumber(r.credit)}` : '-'}</td>
+            `;
+            tbTbody.appendChild(tr);
+        });
+
+        document.getElementById('tbTotalDr').textContent = '₹' + formatNumber(tb.totalDebit);
+        document.getElementById('tbTotalCr').textContent = '₹' + formatNumber(tb.totalCredit);
+
+        const badge = document.getElementById('tbStatusBadge');
+        if (badge) {
+            if (Math.abs(tb.totalDebit - tb.totalCredit) < 0.05) {
+                badge.className = 'badge green';
+                badge.textContent = 'Balanced (Dr = Cr)';
+            } else {
+                badge.className = 'badge red';
+                badge.textContent = `Diff: ₹${formatNumber(tb.difference)}`;
+            }
+        }
+    }
+
+    // 2. Trading Account
+    const tr = financialReports.tradingAccount;
+    if (tr) {
+        document.getElementById('trOpeningStock').textContent = '₹' + formatNumber(tr.openingStock);
+        document.getElementById('trPurchases').textContent = '₹' + formatNumber(tr.purchases);
+        document.getElementById('trSales').textContent = '₹' + formatNumber(tr.sales);
+        document.getElementById('trClosingStock').textContent = '₹' + formatNumber(tr.closingStock);
+
+        const directExpList = document.getElementById('trDirectExpensesList');
+        directExpList.innerHTML = '';
+        tr.directExpenses.forEach(e => {
+            directExpList.innerHTML += `<div class="statement-row"><span>${e.name}</span><strong>₹${formatNumber(e.amount)}</strong></div>`;
+        });
+
+        const directIncList = document.getElementById('trDirectIncomesList');
+        directIncList.innerHTML = '';
+        tr.directIncomes.forEach(i => {
+            directIncList.innerHTML += `<div class="statement-row"><span>${i.name}</span><strong>₹${formatNumber(i.amount)}</strong></div>`;
+        });
+
+        if (tr.grossProfit > 0) {
+            document.getElementById('trGrossProfitRow').style.display = 'flex';
+            document.getElementById('trGrossProfit').textContent = '₹' + formatNumber(tr.grossProfit);
+            document.getElementById('trGrossLossRow').style.display = 'none';
+            document.getElementById('tradingProfitBadge').className = 'badge green';
+            document.getElementById('tradingProfitBadge').textContent = `Gross Profit: ₹${formatNumber(tr.grossProfit)}`;
+        } else {
+            document.getElementById('trGrossProfitRow').style.display = 'none';
+            document.getElementById('trGrossLossRow').style.display = 'flex';
+            document.getElementById('trGrossLoss').textContent = '₹' + formatNumber(tr.grossLoss);
+            document.getElementById('tradingProfitBadge').className = 'badge red';
+            document.getElementById('tradingProfitBadge').textContent = `Gross Loss: ₹${formatNumber(tr.grossLoss)}`;
+        }
+
+        document.getElementById('trTotalDebit').textContent = '₹' + formatNumber(tr.totalDebit);
+        document.getElementById('trTotalCredit').textContent = '₹' + formatNumber(tr.totalCredit);
+    }
+
+    // 3. Profit & Loss Account
+    const pl = financialReports.profitLossAccount;
+    if (pl) {
+        if (pl.grossProfit > 0) {
+            document.getElementById('plGrossProfitRow').style.display = 'flex';
+            document.getElementById('plGrossProfit').textContent = '₹' + formatNumber(pl.grossProfit);
+            document.getElementById('plGrossLossRow').style.display = 'none';
+        } else {
+            document.getElementById('plGrossProfitRow').style.display = 'none';
+            document.getElementById('plGrossLossRow').style.display = 'flex';
+            document.getElementById('plGrossLoss').textContent = '₹' + formatNumber(pl.grossLoss);
+        }
+
+        const indExpList = document.getElementById('plIndirectExpensesList');
+        indExpList.innerHTML = '';
+        pl.indirectExpenses.forEach(e => {
+            indExpList.innerHTML += `<div class="statement-row"><span>${e.name}</span><strong>₹${formatNumber(e.amount)}</strong></div>`;
+        });
+
+        const indIncList = document.getElementById('plIndirectIncomesList');
+        indIncList.innerHTML = '';
+        pl.indirectIncomes.forEach(i => {
+            indIncList.innerHTML += `<div class="statement-row"><span>${i.name}</span><strong>₹${formatNumber(i.amount)}</strong></div>`;
+        });
+
+        if (pl.netProfit >= 0) {
+            document.getElementById('plNetProfitRow').style.display = 'flex';
+            document.getElementById('plNetProfit').textContent = '₹' + formatNumber(pl.netProfit);
+            document.getElementById('plNetLossRow').style.display = 'none';
+            document.getElementById('plNetProfitBadge').className = 'badge green';
+            document.getElementById('plNetProfitBadge').textContent = `Net Profit: ₹${formatNumber(pl.netProfit)}`;
+        } else {
+            document.getElementById('plNetProfitRow').style.display = 'none';
+            document.getElementById('plNetLossRow').style.display = 'flex';
+            document.getElementById('plNetLoss').textContent = '₹' + formatNumber(pl.netLoss);
+            document.getElementById('plNetProfitBadge').className = 'badge red';
+            document.getElementById('plNetProfitBadge').textContent = `Net Loss: ₹${formatNumber(pl.netLoss)}`;
+        }
+
+        document.getElementById('plTotalDebit').textContent = '₹' + formatNumber(pl.totalDebit);
+        document.getElementById('plTotalCredit').textContent = '₹' + formatNumber(pl.totalCredit);
+    }
+
+    // 4. Balance Sheet
+    const bs = financialReports.balanceSheet;
+    if (bs) {
+        const liabList = document.getElementById('bsLiabilitiesList');
+        liabList.innerHTML = '';
+        bs.liabilities.forEach(item => {
+            liabList.innerHTML += `<div class="statement-row"><span>${item.particulars} <small style="color:#64748b;">(${item.group})</small></span><strong>₹${formatNumber(item.amount)}</strong></div>`;
+        });
+        document.getElementById('bsTotalLiabilities').textContent = '₹' + formatNumber(bs.totalLiabilities);
+
+        const assList = document.getElementById('bsAssetsList');
+        assList.innerHTML = '';
+        bs.assets.forEach(item => {
+            assList.innerHTML += `<div class="statement-row"><span>${item.particulars} <small style="color:#64748b;">(${item.group})</small></span><strong>₹${formatNumber(item.amount)}</strong></div>`;
+        });
+        document.getElementById('bsTotalAssets').textContent = '₹' + formatNumber(bs.totalAssets);
+
+        const bsBadge = document.getElementById('bsBalancedBadge');
+        if (bsBadge) {
+            if (bs.difference < 0.05) {
+                bsBadge.className = 'badge green';
+                bsBadge.textContent = 'Balanced (Assets = Liabilities)';
+            } else {
+                bsBadge.className = 'badge red';
+                bsBadge.textContent = `Difference: ₹${formatNumber(bs.difference)}`;
+            }
+        }
+    }
+}
+
+// ==========================================================
+// 10. SETTINGS, DATABASE & BACKUP
+// ==========================================================
+function populateSettingsForm(dbPath = '') {
+    if (dbPath) {
+        const dbInput = document.getElementById('dbPathDisplay');
+        if (dbInput) dbInput.value = dbPath;
+    }
+    if (!settings) return;
+    Object.entries(settings).forEach(([key, value]) => {
+        const input = document.querySelector(`[name="${key}"]`);
+        if (input && value !== undefined && value !== null) {
+            input.value = value;
+        }
+    });
+}
+
+async function saveSettings() {
+    const newSettings = {};
+    document.querySelectorAll('#companySettingsForm input, #companySettingsForm textarea').forEach(input => {
+        newSettings[input.name] = input.value;
+    });
+    document.querySelectorAll('#bankSettingsForm input').forEach(input => {
+        newSettings[input.name] = input.value;
+    });
+    document.querySelectorAll('#invoiceSettingsForm input, #invoiceSettingsForm textarea').forEach(input => {
+        newSettings[input.name] = input.value;
+    });
+
+    try {
+        await ipcRenderer.invoke('save-settings', newSettings);
+        settings = newSettings;
+        showToast('Settings saved successfully', 'success');
+    } catch (error) {
+        showToast('Error saving settings: ' + error.message, 'error');
+    }
+}
+
+async function openDbFolder() {
+    try {
+        await ipcRenderer.invoke('open-db-folder');
+    } catch (err) {
+        showToast('Error opening folder: ' + err.message, 'error');
+    }
+}
+
+async function openDbFile() {
+    try {
+        await ipcRenderer.invoke('open-db-file');
+    } catch (err) {
+        showToast('Error opening in Excel: ' + err.message, 'error');
+    }
+}
+
+async function backupData() {
+    try {
+        const result = await ipcRenderer.invoke('backup-data');
+        if (result.success) {
+            showToast('Backup saved successfully!', 'success');
+        } else if (!result.cancelled) {
+            showToast('Backup failed: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Backup error: ' + err.message, 'error');
+    }
+}
+
+async function restoreData() {
+    if (!confirm('Restoring a backup will overwrite the current database with the selected backup file. Continue?')) return;
+    try {
+        const result = await ipcRenderer.invoke('restore-data');
+        if (result.success) {
+            showToast('Database restored successfully!', 'success');
+            await loadAllData();
+            renderAllTables();
+        } else if (!result.cancelled) {
+            showToast('Restore failed: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Restore error: ' + err.message, 'error');
+    }
+}
+
+async function exportExcel(sheetName = null) {
+    try {
+        const result = await ipcRenderer.invoke('export-excel', { sheetName });
+        if (result.success) {
+            showToast((sheetName ? sheetName : 'Database') + ' exported to Excel successfully!', 'success');
+        } else if (!result.cancelled) {
+            showToast('Export failed: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Export error: ' + err.message, 'error');
+    }
+}
+
+async function resetData() {
+    if (!confirm('This will delete all invoices, purchases, vouchers, and custom ledgers and reset to TaxTech ERP defaults. Continue?')) return;
+    try {
+        const result = await ipcRenderer.invoke('reset-data');
+        if (result.success) {
+            showToast('Database has been reset to defaults', 'success');
+            await loadAllData();
+            renderAllTables();
+        } else {
+            showToast('Reset failed: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Reset error: ' + err.message, 'error');
+    }
+}
+
+function closeAllModals() {
+    document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+    editingInvoiceId = null;
+    editingPurchaseId = null;
+    editingProductId = null;
+    editingClientId = null;
+    editingVoucherId = null;
+    editingLedgerId = null;
+}
+
+// Utility Functions
+function formatNumber(num) {
+    return Number(num || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('en-IN');
+}
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const icons = {
+        success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+        warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+    };
+    toast.innerHTML = `
+        <div class="toast-icon">${icons[type]}</div>
+        <div class="toast-message">${message}</div>
+        <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+}
+
+// Global scope exposure for inline onclick handlers
+window.editInvoice = editInvoice;
+window.viewInvoice = viewInvoice;
+window.deleteInvoice = deleteInvoice;
+window.editPurchase = editPurchase;
+window.deletePurchase = deletePurchase;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
+window.editClient = editClient;
+window.deleteClient = deleteClient;
+window.deleteVoucher = deleteVoucher;
+window.editLedger = editLedger;
+window.deleteLedger = deleteLedger;
+window.onProductSelect = onProductSelect;
+window.onPurchaseProductSelect = onPurchaseProductSelect;
+window.calculateItemRow = calculateItemRow;
+window.calculatePurchaseItemRow = calculatePurchaseItemRow;
+window.removeInvoiceItem = removeInvoiceItem;
+window.removePurchaseItem = removePurchaseItem;
+window.closeAllComboboxes = closeAllComboboxes;
+window.setupProductCombobox = setupProductCombobox;
