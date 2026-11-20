@@ -3,13 +3,41 @@
   "version": "1.0.0",
   "description": "TaxTech ERP - Enterprise Business Management Suite with Indian GST Billing, Inventory & Double-Entry Accounting",
   "main": "main.js",
+  "author": "TaxTech Solutions",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "electron . --test"
+    "test": "electron . --test",
+    "dist:portable": "electron-builder --win portable",
+    "dist:installer": "electron-builder --win nsis",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.taxtech.erp",
+    "productName": "TaxTech ERP",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TaxTech ERP"
+    },
+    "portable": {
+      "artifactName": "TaxTech-ERP-Portable-${version}.exe"
+    }
   },
   "devDependencies": {
-    "electron": "^27.3.10"
+    "electron": "^27.3.10",
+    "electron-builder": "^26.18.0"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
