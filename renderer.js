@@ -335,6 +335,9 @@ function setupEventListeners() {
     document.getElementById('openDbFileBtn')?.addEventListener('click', openDbFile);
     document.getElementById('resetDataBtn')?.addEventListener('click', resetData);
 
+    // Invoice Output Format, Alignment & Logo Controls
+    initInvoiceFormatControls();
+
     // Keyboard Shortcuts
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeAllModals();
@@ -1070,17 +1073,7 @@ async function viewInvoice(id) {
     const items = invoiceItems.filter(i => i.invoiceId === id);
     const client = clients.find(c => c.id === invoice.clientId) || { name: invoice.clientName };
 
-    try {
-        const result = await ipcRenderer.invoke('generate-invoice-pdf', { invoice, items, settings, client });
-        if (result.success) {
-            showToast('Invoice PDF generated', 'success');
-            await ipcRenderer.invoke('open-file', result.path);
-        } else if (!result.cancelled) {
-            showToast('PDF error: ' + result.error, 'error');
-        }
-    } catch (err) {
-        showToast('Error generating PDF: ' + err.message, 'error');
-    }
+    openInvoicePreviewModal(invoice, items, client, settings);
 }
 
 async function generateInvoicePDF() {
@@ -2329,30 +2322,128 @@ function populateSettingsForm(dbPath = '') {
         if (dbInput) dbInput.value = dbPath;
     }
     if (!settings) return;
+
+    // Populate all text inputs, textareas, selects and checkboxes
     Object.entries(settings).forEach(([key, value]) => {
         const input = document.querySelector(`[name="${key}"]`);
         if (input && value !== undefined && value !== null) {
-            input.value = value;
+            if (input.type === 'checkbox') {
+                input.checked = (value !== 'false' && value !== false);
+            } else {
+                input.value = value;
+            }
         }
     });
+
+    // Populate logo preview and storage fields
+    const logoData = settings.companyLogo || settings.invoiceLogo;
+    const logoImg = document.getElementById('logoPreviewImg');
+    const logoPlaceholder = document.getElementById('logoPlaceholderText');
+    const removeLogoBtn = document.getElementById('removeLogoBtn');
+    const compLogoInput = document.getElementById('companyLogoData');
+    const invLogoInput = document.getElementById('invoiceLogoData');
+
+    if (logoData && logoImg) {
+        logoImg.src = logoData;
+        logoImg.style.display = 'block';
+        if (logoPlaceholder) logoPlaceholder.style.display = 'none';
+        if (removeLogoBtn) removeLogoBtn.style.display = 'inline-flex';
+        if (compLogoInput) compLogoInput.value = logoData;
+        if (invLogoInput) invLogoInput.value = logoData;
+    } else {
+        if (logoImg) {
+            logoImg.src = '';
+            logoImg.style.display = 'none';
+        }
+        if (logoPlaceholder) logoPlaceholder.style.display = 'block';
+        if (removeLogoBtn) removeLogoBtn.style.display = 'none';
+        if (compLogoInput) compLogoInput.value = '';
+        if (invLogoInput) invLogoInput.value = '';
+    }
+
+    // Populate logo width slider
+    const logoWidth = parseInt(settings.invoiceLogoWidth, 10) || 100;
+    const widthSlider = document.getElementById('invoiceLogoWidth');
+    const widthDisplay = document.getElementById('logoWidthDisplay');
+    if (widthSlider) widthSlider.value = logoWidth;
+    if (widthDisplay) widthDisplay.textContent = logoWidth + ' px';
+
+    // Populate logo align buttons
+    const logoAlign = settings.invoiceLogoAlign || 'left';
+    document.querySelectorAll('#logoAlignGroup .pill-seg-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.align === logoAlign);
+    });
+    const logoAlignInput = document.getElementById('invoiceLogoAlign');
+    if (logoAlignInput) logoAlignInput.value = logoAlign;
+
+    // Populate header text align buttons
+    const headerAlign = settings.invoiceHeaderAlign || 'left';
+    document.querySelectorAll('#headerAlignGroup .pill-seg-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.align === headerAlign);
+    });
+    const headerAlignInput = document.getElementById('invoiceHeaderAlign');
+    if (headerAlignInput) headerAlignInput.value = headerAlign;
+
+    // Populate theme color & swatches
+    const themeColor = settings.invoiceThemeColor || '#1a1a2e';
+    const colorPicker = document.getElementById('invoiceThemeColor');
+    const colorHex = document.getElementById('themeColorHex');
+    if (colorPicker) colorPicker.value = themeColor;
+    if (colorHex) colorHex.textContent = themeColor;
+    document.querySelectorAll('#colorSwatches .color-swatch').forEach(swatch => {
+        swatch.classList.toggle('active', (swatch.dataset.color || '').toLowerCase() === themeColor.toLowerCase());
+    });
+
+    // Populate font and template dropdowns
+    if (settings.invoiceFont) {
+        const fontSel = document.getElementById('invoiceFont');
+        if (fontSel) fontSel.value = settings.invoiceFont;
+    }
+    if (settings.invoiceTemplate) {
+        const tplSel = document.getElementById('invoiceTemplate');
+        if (tplSel) tplSel.value = settings.invoiceTemplate;
+    }
 }
 
 async function saveSettings() {
     const newSettings = {};
+
+    // 1. Company Info
     document.querySelectorAll('#companySettingsForm input, #companySettingsForm textarea').forEach(input => {
-        newSettings[input.name] = input.value;
+        if (input.type === 'checkbox') newSettings[input.name] = input.checked ? 'true' : 'false';
+        else newSettings[input.name] = input.value;
     });
+
+    // 2. Bank Info
     document.querySelectorAll('#bankSettingsForm input').forEach(input => {
-        newSettings[input.name] = input.value;
+        if (input.type === 'checkbox') newSettings[input.name] = input.checked ? 'true' : 'false';
+        else newSettings[input.name] = input.value;
     });
+
+    // 3. Invoice Series
     document.querySelectorAll('#invoiceSettingsForm input, #invoiceSettingsForm textarea').forEach(input => {
-        newSettings[input.name] = input.value;
+        if (input.type === 'checkbox') newSettings[input.name] = input.checked ? 'true' : 'false';
+        else newSettings[input.name] = input.value;
     });
+
+    // 4. Invoice Design & Output Settings
+    document.querySelectorAll('#invoiceFormatSettingsForm input, #invoiceFormatSettingsForm select, #invoiceFormatSettingsForm textarea').forEach(input => {
+        if (input.type === 'checkbox') {
+            newSettings[input.name] = input.checked ? 'true' : 'false';
+        } else {
+            newSettings[input.name] = input.value;
+        }
+    });
+
+    // Sync companyLogo & invoiceLogo
+    const logo = newSettings.invoiceLogo || newSettings.companyLogo || '';
+    newSettings.companyLogo = logo;
+    newSettings.invoiceLogo = logo;
 
     try {
         await ipcRenderer.invoke('save-settings', newSettings);
         settings = newSettings;
-        showToast('Settings saved successfully', 'success');
+        showToast('Settings & Invoice Design saved successfully', 'success');
     } catch (error) {
         showToast('Error saving settings: ' + error.message, 'error');
     }
@@ -2471,6 +2562,670 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 4000);
 }
 
+// ==========================================================
+// 11. INVOICE FORMAT, LOGO, ALIGNMENT & LIVE PREVIEW ENGINE
+// ==========================================================
+let currentPreviewData = null;
+
+function setLogoImage(dataUrl) {
+    const logoImg = document.getElementById('logoPreviewImg');
+    const logoPlaceholder = document.getElementById('logoPlaceholderText');
+    const removeLogoBtn = document.getElementById('removeLogoBtn');
+    const compLogoInput = document.getElementById('companyLogoData');
+    const invLogoInput = document.getElementById('invoiceLogoData');
+
+    if (dataUrl) {
+        if (logoImg) {
+            logoImg.src = dataUrl;
+            logoImg.style.display = 'block';
+        }
+        if (logoPlaceholder) logoPlaceholder.style.display = 'none';
+        if (removeLogoBtn) removeLogoBtn.style.display = 'inline-flex';
+        if (compLogoInput) compLogoInput.value = dataUrl;
+        if (invLogoInput) invLogoInput.value = dataUrl;
+    } else {
+        if (logoImg) {
+            logoImg.src = '';
+            logoImg.style.display = 'none';
+        }
+        if (logoPlaceholder) logoPlaceholder.style.display = 'block';
+        if (removeLogoBtn) removeLogoBtn.style.display = 'none';
+        if (compLogoInput) compLogoInput.value = '';
+        if (invLogoInput) invLogoInput.value = '';
+        const fileInput = document.getElementById('logoFileInput');
+        if (fileInput) fileInput.value = '';
+    }
+}
+
+function initInvoiceFormatControls() {
+    // 1. Logo Upload & Remove
+    document.getElementById('chooseLogoBtn')?.addEventListener('click', async () => {
+        try {
+            const res = await ipcRenderer.invoke('select-logo-file');
+            if (res && res.success && res.base64) {
+                setLogoImage(res.base64);
+                showToast('Company logo uploaded successfully', 'success');
+                return;
+            }
+        } catch (err) {
+            console.log('select-logo-file fallback to DOM input:', err);
+        }
+        document.getElementById('logoFileInput')?.click();
+    });
+
+    document.getElementById('logoFileInput')?.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            setLogoImage(evt.target.result);
+            showToast('Company logo loaded successfully', 'success');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById('removeLogoBtn')?.addEventListener('click', () => {
+        setLogoImage('');
+        showToast('Logo removed', 'info');
+    });
+
+    // 2. Logo Width Range Slider
+    document.getElementById('invoiceLogoWidth')?.addEventListener('input', (e) => {
+        const val = e.target.value;
+        const disp = document.getElementById('logoWidthDisplay');
+        if (disp) disp.textContent = val + ' px';
+    });
+
+    // 3. Logo Alignment Segmented Buttons
+    document.querySelectorAll('#logoAlignGroup .pill-seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#logoAlignGroup .pill-seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const input = document.getElementById('invoiceLogoAlign');
+            if (input) input.value = btn.dataset.align;
+        });
+    });
+
+    // 4. Header Alignment Segmented Buttons
+    document.querySelectorAll('#headerAlignGroup .pill-seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#headerAlignGroup .pill-seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const input = document.getElementById('invoiceHeaderAlign');
+            if (input) input.value = btn.dataset.align;
+        });
+    });
+
+    // 5. Preset Color Swatches
+    document.querySelectorAll('#colorSwatches .color-swatch').forEach(swatch => {
+        swatch.addEventListener('click', () => {
+            document.querySelectorAll('#colorSwatches .color-swatch').forEach(s => s.classList.remove('active'));
+            swatch.classList.add('active');
+            const color = swatch.dataset.color;
+            const colorInput = document.getElementById('invoiceThemeColor');
+            const hexDisplay = document.getElementById('themeColorHex');
+            if (colorInput) colorInput.value = color;
+            if (hexDisplay) hexDisplay.textContent = color;
+        });
+    });
+
+    // 6. Custom Color Input
+    document.getElementById('invoiceThemeColor')?.addEventListener('input', (e) => {
+        const color = e.target.value;
+        const hexDisplay = document.getElementById('themeColorHex');
+        if (hexDisplay) hexDisplay.textContent = color;
+        document.querySelectorAll('#colorSwatches .color-swatch').forEach(s => {
+            s.classList.toggle('active', (s.dataset.color || '').toLowerCase() === color.toLowerCase());
+        });
+    });
+
+    // 7. Preview Sample Invoice Trigger
+    document.getElementById('previewSampleInvoiceBtn')?.addEventListener('click', () => {
+        const liveSettings = getLiveFormatSettings();
+        const { sampleInvoice, sampleItems, sampleClient } = getSampleInvoiceData(liveSettings);
+        openInvoicePreviewModal(sampleInvoice, sampleItems, sampleClient, liveSettings, 'Sample Invoice Preview');
+    });
+
+    // 8. Preview Draft Invoice Trigger from Invoice Modal
+    document.getElementById('previewInvoiceDraftBtn')?.addEventListener('click', () => {
+        const draft = getDraftInvoiceData();
+        if (!draft) return;
+        const liveSettings = getLiveFormatSettings();
+        openInvoicePreviewModal(draft.invoice, draft.items, draft.client, liveSettings, 'Draft Invoice Preview');
+    });
+
+    // 9. Close Preview Modal
+    document.getElementById('closeInvoicePreviewModal')?.addEventListener('click', closeInvoicePreviewModal);
+    document.getElementById('invoicePreviewModalOverlay')?.addEventListener('click', closeInvoicePreviewModal);
+
+    // 10. Print Preview Invoice
+    document.getElementById('printPreviewInvoiceBtn')?.addEventListener('click', () => {
+        window.print();
+    });
+
+    // 11. Export PDF from Preview Modal
+    document.getElementById('exportPdfPreviewBtn')?.addEventListener('click', async () => {
+        if (!currentPreviewData) return;
+        try {
+            const result = await ipcRenderer.invoke('generate-invoice-pdf', {
+                invoice: currentPreviewData.invoice,
+                items: currentPreviewData.items,
+                settings: currentPreviewData.settings,
+                client: currentPreviewData.client
+            });
+            if (result && result.success) {
+                showToast('Invoice PDF generated successfully', 'success');
+                await ipcRenderer.invoke('open-file', result.path);
+            } else if (result && !result.cancelled) {
+                showToast('PDF error: ' + (result.error || 'Failed to generate PDF'), 'error');
+            }
+        } catch (err) {
+            showToast('Error generating PDF: ' + err.message, 'error');
+        }
+    });
+}
+
+function getLiveFormatSettings() {
+    const live = { ...settings };
+    // Read live fields from company & invoice format form so unsaved adjustments can be previewed
+    document.querySelectorAll('#companySettingsForm input, #companySettingsForm textarea').forEach(inp => {
+        if (inp.name) live[inp.name] = inp.value;
+    });
+    document.querySelectorAll('#bankSettingsForm input').forEach(inp => {
+        if (inp.name) live[inp.name] = inp.value;
+    });
+    document.querySelectorAll('#invoiceSettingsForm input, #invoiceSettingsForm textarea').forEach(inp => {
+        if (inp.name) live[inp.name] = inp.value;
+    });
+    document.querySelectorAll('#invoiceFormatSettingsForm input, #invoiceFormatSettingsForm select, #invoiceFormatSettingsForm textarea').forEach(inp => {
+        if (inp.type === 'checkbox') {
+            live[inp.name] = inp.checked ? 'true' : 'false';
+        } else if (inp.name) {
+            live[inp.name] = inp.value;
+        }
+    });
+
+    const logo = live.invoiceLogo || live.companyLogo || '';
+    live.companyLogo = logo;
+    live.invoiceLogo = logo;
+    return live;
+}
+
+function getDraftInvoiceData() {
+    const invNum = document.getElementById('invoiceNumber')?.value || 'INV-DRAFT';
+    const invDate = document.getElementById('invoiceDate')?.value || new Date().toISOString().split('T')[0];
+    const clientId = document.getElementById('invoiceClient')?.value || '';
+    const pos = document.getElementById('placeOfSupply')?.value || '';
+    const revCharge = document.getElementById('reverseCharge')?.checked ? 'Yes' : 'No';
+    const disc = parseFloat(document.getElementById('invoiceDiscount')?.value) || 0;
+    const round = parseFloat(document.getElementById('invoiceRoundOff')?.value) || 0;
+
+    let client = clients.find(c => c.id === clientId);
+    if (!client) {
+        client = {
+            name: 'Valued Customer',
+            address1: 'Customer Address Line 1',
+            city: 'Commercial Hub',
+            state: pos || settings.companyState || 'Delhi',
+            stateCode: '07',
+            gstin: '07AAAAA0000A1Z5'
+        };
+    }
+
+    const items = [];
+    document.querySelectorAll('#invoiceItemsTable tbody tr').forEach((tr, idx) => {
+        const prodSelect = tr.querySelector('.item-product');
+        const prodId = prodSelect ? prodSelect.value : '';
+        const pData = products.find(p => p.id === prodId);
+        const searchInput = tr.querySelector('.item-search-input');
+        const rawSearchText = searchInput ? searchInput.value.replace(/^\[(Goods|Service)\]\s*/i, '').trim() : '';
+
+        const qty = parseFloat(tr.querySelector('.item-qty')?.value) || 1;
+        const rate = parseFloat(tr.querySelector('.item-rate')?.value) || 0;
+        const itemDisc = parseFloat(tr.querySelector('.item-disc')?.value) || 0;
+        const taxable = parseFloat(tr.querySelector('.item-taxable')?.value) || (qty * rate);
+        const gstRate = parseFloat(tr.querySelector('.item-gstrate')?.value) || 18;
+        const cgstAmt = parseFloat(tr.querySelector('.item-cgst')?.value) || 0;
+        const sgstAmt = parseFloat(tr.querySelector('.item-sgst')?.value) || 0;
+        const igstAmt = parseFloat(tr.querySelector('.item-igst')?.value) || 0;
+        const total = parseFloat(tr.querySelector('.item-total')?.value) || (taxable + cgstAmt + sgstAmt + igstAmt);
+
+        items.push({
+            productName: pData ? pData.name : (rawSearchText || `Item ${idx + 1}`),
+            hsn: tr.querySelector('.item-hsn')?.value || (pData ? pData.hsn : '998313'),
+            type: pData ? (pData.type || 'Goods') : 'Goods',
+            quantity: qty,
+            unit: tr.querySelector('.item-unit')?.value || 'PCS',
+            rate,
+            discountPercent: itemDisc,
+            discountAmount: (qty * rate * itemDisc) / 100,
+            taxableValue: taxable,
+            gstRate,
+            cgstPercent: cgstAmt > 0 ? gstRate / 2 : 0,
+            cgstAmount: cgstAmt,
+            sgstPercent: sgstAmt > 0 ? gstRate / 2 : 0,
+            sgstAmount: sgstAmt,
+            igstPercent: igstAmt > 0 ? gstRate : 0,
+            igstAmount: igstAmt,
+            totalAmount: total
+        });
+    });
+
+    if (items.length === 0) {
+        items.push({
+            productName: 'Professional Technical & Software Services',
+            hsn: '998313',
+            type: 'Service',
+            quantity: 1,
+            unit: 'NOS',
+            rate: 15000,
+            discountPercent: 0,
+            discountAmount: 0,
+            taxableValue: 15000,
+            gstRate: 18,
+            cgstPercent: 9,
+            cgstAmount: 1350,
+            sgstPercent: 9,
+            sgstAmount: 1350,
+            igstPercent: 0,
+            igstAmount: 0,
+            totalAmount: 17700
+        });
+    }
+
+    const subtotal = items.reduce((s, i) => s + i.taxableValue, 0);
+    const totalCgst = items.reduce((s, i) => s + i.cgstAmount, 0);
+    const totalSgst = items.reduce((s, i) => s + i.sgstAmount, 0);
+    const totalIgst = items.reduce((s, i) => s + i.igstAmount, 0);
+    const totalTax = totalCgst + totalSgst + totalIgst;
+    const grandTotal = Math.max(0, subtotal + totalTax - disc + round);
+
+    const invoice = {
+        invoiceNumber: invNum,
+        date: invDate,
+        clientName: client.name,
+        clientGstin: client.gstin || '',
+        placeOfSupply: pos || client.state || 'Local',
+        reverseCharge: revCharge,
+        subtotal,
+        totalCgst,
+        totalSgst,
+        totalIgst,
+        totalTax,
+        discount: disc,
+        roundOff: round,
+        grandTotal,
+        status: 'Draft'
+    };
+
+    return { invoice, items, client };
+}
+
+function getSampleInvoiceData(st = {}) {
+    const sampleClient = {
+        name: 'Apex Infotech & Engineering Pvt Ltd',
+        address1: 'Plot 42, Tech Park, Cyber Gateway',
+        city: 'Hyderabad',
+        state: 'Telangana',
+        stateCode: '36',
+        gstin: '36AABCU9603R1ZM'
+    };
+
+    const sampleItems = [
+        {
+            productName: 'TaxTech ERP Enterprise Software License (Annual)',
+            hsn: '998313',
+            type: 'Service',
+            quantity: 1,
+            unit: 'NOS',
+            rate: 28000,
+            discountPercent: 10,
+            discountAmount: 2800,
+            taxableValue: 25200,
+            gstRate: 18,
+            cgstPercent: 9,
+            cgstAmount: 2268,
+            sgstPercent: 9,
+            sgstAmount: 2268,
+            igstPercent: 0,
+            igstAmount: 0,
+            totalAmount: 29736
+        },
+        {
+            productName: 'High-Speed Thermal Barcode Scanner & Stand',
+            hsn: '847160',
+            type: 'Goods',
+            quantity: 2,
+            unit: 'PCS',
+            rate: 3500,
+            discountPercent: 0,
+            discountAmount: 0,
+            taxableValue: 7000,
+            gstRate: 18,
+            cgstPercent: 9,
+            cgstAmount: 630,
+            sgstPercent: 9,
+            sgstAmount: 630,
+            igstPercent: 0,
+            igstAmount: 0,
+            totalAmount: 8260
+        }
+    ];
+
+    const subtotal = 32200;
+    const totalCgst = 2898;
+    const totalSgst = 2898;
+    const totalIgst = 0;
+    const totalTax = 5796;
+    const discount = 0;
+    const roundOff = 0;
+    const grandTotal = 37996;
+
+    const sampleInvoice = {
+        invoiceNumber: (st.invoicePrefix || 'INV') + '-2024-001',
+        date: new Date().toISOString().split('T')[0],
+        clientName: sampleClient.name,
+        clientGstin: sampleClient.gstin,
+        placeOfSupply: 'Telangana',
+        reverseCharge: 'No',
+        subtotal,
+        totalCgst,
+        totalSgst,
+        totalIgst,
+        totalTax,
+        discount,
+        roundOff,
+        grandTotal,
+        status: 'Sample'
+    };
+
+    return { sampleInvoice, sampleItems, sampleClient };
+}
+
+function openInvoicePreviewModal(invoice, items, client, customSettings = null, badgeText = 'TaxTech ERP Preview') {
+    const st = customSettings || settings || {};
+    currentPreviewData = { invoice, items, client, settings: st };
+
+    const badge = document.getElementById('previewTemplateBadge');
+    if (badge) badge.textContent = badgeText;
+
+    const container = document.getElementById('invoicePaperPreview');
+    if (container) {
+        container.innerHTML = renderInvoicePaperHTML(invoice, items, client, st);
+    }
+
+    const modal = document.getElementById('invoicePreviewModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeInvoicePreviewModal() {
+    const modal = document.getElementById('invoicePreviewModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function renderInvoicePaperHTML(invoice, items, client, st) {
+    const primaryColor = st.invoiceThemeColor || '#1a1a2e';
+    const logoAlign = st.invoiceLogoAlign || 'left';
+    const headerAlign = st.invoiceHeaderAlign || 'left';
+    const logoWidth = Math.min(180, Math.max(50, parseInt(st.invoiceLogoWidth, 10) || 100));
+    const showLogo = st.showLogo !== 'false' && st.showLogo !== false;
+    const logoSrc = st.companyLogo || st.invoiceLogo || '';
+    const template = st.invoiceTemplate || 'modern';
+
+    let fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    if (st.invoiceFont === 'Times-Roman') fontFamily = '"Times New Roman", Times, Georgia, serif';
+    else if (st.invoiceFont === 'Courier') fontFamily = '"Courier New", Courier, monospace';
+
+    const docTitle = st.invoiceTitle || 'TAX INVOICE';
+    const docSubtitle = st.invoiceSubtitle || 'Original for Recipient';
+
+    const showHsn = st.showHsn !== 'false' && st.showHsn !== false;
+    const showQty = st.showQty !== 'false' && st.showQty !== false;
+    const showRate = st.showRate !== 'false' && st.showRate !== false;
+    const showDiscount = st.showDiscount !== 'false' && st.showDiscount !== false;
+    const showTaxable = st.showTaxable !== 'false' && st.showTaxable !== false;
+    const showGstRate = st.showGstRate !== 'false' && st.showGstRate !== false;
+    const showAmountInWords = st.showAmountInWords !== 'false' && st.showAmountInWords !== false;
+    const showBankDetails = st.showBankDetails !== 'false' && st.showBankDetails !== false;
+    const showUpi = st.showUpi !== 'false' && st.showUpi !== false;
+    const showTerms = st.showTerms !== 'false' && st.showTerms !== false;
+    const showSignature = st.showSignature !== 'false' && st.showSignature !== false;
+
+    // Header layout computation
+    let headerHTML = '';
+    const companyInfoHTML = `
+        <div class="inv-company-block" style="text-align: ${headerAlign};">
+            <h1 class="inv-company-title" style="color: ${primaryColor};">${st.companyName || 'My Company'}</h1>
+            <p class="inv-company-text">
+                ${st.companyAddress1 || ''}${st.companyAddress2 ? ', ' + st.companyAddress2 : ''}<br>
+                ${st.companyCity || ''}${st.companyPincode ? ' - ' + st.companyPincode : ''}, ${st.companyState || ''}${st.companyStateCode ? ' (' + st.companyStateCode + ')' : ''}<br>
+                Phone: ${st.companyPhone || '-'} | Email: ${st.companyEmail || '-'}<br>
+                <strong>GSTIN:</strong> ${st.companyGstin || '-'} | <strong>PAN:</strong> ${st.companyPan || '-'}
+            </p>
+        </div>
+    `;
+
+    const logoHTML = (showLogo && logoSrc) ? `
+        <div class="inv-logo-block" style="width: ${logoWidth}px; text-align: ${logoAlign};">
+            <img src="${logoSrc}" alt="Company Logo" style="max-width: 100%; max-height: 80px; object-fit: contain;">
+        </div>
+    ` : '';
+
+    if (logoAlign === 'center' && logoHTML) {
+        headerHTML = `
+            <div class="inv-header-center-wrap" style="text-align: center; margin-bottom: 12px;">
+                <div style="margin-bottom: 6px;">${logoHTML}</div>
+                ${companyInfoHTML}
+            </div>
+        `;
+    } else if (logoAlign === 'right' && logoHTML) {
+        headerHTML = `
+            <div class="inv-header-flex-wrap" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div style="flex: 1;">${companyInfoHTML}</div>
+                <div style="margin-left: 20px;">${logoHTML}</div>
+            </div>
+        `;
+    } else if (logoHTML) {
+        // Left
+        headerHTML = `
+            <div class="inv-header-flex-wrap" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div style="margin-right: 20px;">${logoHTML}</div>
+                <div style="flex: 1;">${companyInfoHTML}</div>
+            </div>
+        `;
+    } else {
+        headerHTML = `
+            <div class="inv-header-plain-wrap" style="margin-bottom: 12px;">
+                ${companyInfoHTML}
+            </div>
+        `;
+    }
+
+    // Line items table rows
+    let tableRowsHTML = '';
+    items.forEach((item, idx) => {
+        const taxable = item.taxableValue !== undefined ? Number(item.taxableValue) : (item.quantity * item.rate - (item.discountAmount || 0));
+        const lineTotal = item.totalAmount !== undefined ? Number(item.totalAmount) : (taxable + (item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0));
+        const bg = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
+
+        tableRowsHTML += `
+            <tr style="background: ${bg};">
+                <td style="text-align: center; width: 30px;">${idx + 1}</td>
+                <td style="text-align: left; font-weight: 500;">
+                    ${item.productName || 'Item'}
+                    ${item.type ? `<span class="inv-type-pill">${item.type}</span>` : ''}
+                </td>
+                ${showHsn ? `<td style="text-align: center;">${item.hsn || '-'}</td>` : ''}
+                ${showQty ? `
+                    <td style="text-align: right;">${Number(item.quantity || 1).toFixed(item.unit === 'PCS' || item.unit === 'NOS' ? 0 : 2)}</td>
+                    <td style="text-align: center;">${item.unit || ''}</td>
+                ` : ''}
+                ${showRate ? `<td style="text-align: right;">₹${Number(item.rate || 0).toFixed(2)}</td>` : ''}
+                ${showDiscount ? `<td style="text-align: right;">${Number(item.discountPercent || 0).toFixed(1)}%</td>` : ''}
+                ${showTaxable ? `<td style="text-align: right;">₹${Number(taxable || 0).toFixed(2)}</td>` : ''}
+                ${showGstRate ? `<td style="text-align: right;">${Number(item.gstRate || 0).toFixed(1)}%</td>` : ''}
+                <td style="text-align: right; font-weight: 600;">₹${Number(lineTotal || 0).toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div class="invoice-paper-root template-${template}" style="font-family: ${fontFamily}; --inv-primary: ${primaryColor};">
+            <!-- 1. Header & Company Info -->
+            ${headerHTML}
+
+            <!-- 2. Accent Bar & Title Banner -->
+            <div class="inv-accent-bar" style="height: 3px; background: ${primaryColor}; margin: 8px 0 12px 0; border-radius: 2px;"></div>
+            <div class="inv-title-container" style="text-align: center; margin-bottom: 14px;">
+                <h2 class="inv-title-heading" style="color: ${primaryColor}; margin: 0; font-size: 1.35rem; font-weight: 700; letter-spacing: 1px;">${docTitle}</h2>
+                ${docSubtitle ? `<div class="inv-title-sub" style="font-size: 0.78rem; color: #64748b; font-style: italic; margin-top: 2px;">${docSubtitle}</div>` : ''}
+            </div>
+
+            <!-- 3. Meta Grid: Buyer Box & Invoice Box -->
+            <div class="inv-meta-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                <div class="inv-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: ${primaryColor}; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Bill To (Buyer)</div>
+                    <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 2px;">${client.name || 'Walk-in Customer'}</div>
+                    <div style="font-size: 0.78rem; color: #475569; line-height: 1.4;">
+                        ${client.address1 || ''}${client.city ? ', ' + client.city : ''}${client.state ? ', ' + client.state : ''}<br>
+                        ${client.gstin ? `<strong>GSTIN:</strong> ${client.gstin}<br>` : ''}
+                        State Code: ${client.stateCode || '-'} | Place of Supply: ${invoice.placeOfSupply || client.state || '-'}
+                    </div>
+                </div>
+
+                <div class="inv-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: ${primaryColor}; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Invoice Details</div>
+                    <div style="font-size: 0.80rem; line-height: 1.5; color: #334155;">
+                        <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Invoice No:</span> <strong style="color:#0f172a;">${invoice.invoiceNumber || '-'}</strong></div>
+                        <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Invoice Date:</span> <span>${formatDate(invoice.date)}</span></div>
+                        <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Reverse Charge:</span> <span>${invoice.reverseCharge || 'No'}</span></div>
+                        <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Invoice Series:</span> <span>${st.invoiceSeries || 'Default'}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Dynamic Line Items Table -->
+            <table class="inv-render-table" style="width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 0.78rem;">
+                <thead>
+                    <tr style="background: ${primaryColor}; color: #ffffff;">
+                        <th style="padding: 6px 8px; text-align: center; border: 1px solid ${primaryColor}; width: 30px;">#</th>
+                        <th style="padding: 6px 8px; text-align: left; border: 1px solid ${primaryColor};">Item / Service Description</th>
+                        ${showHsn ? `<th style="padding: 6px 8px; text-align: center; border: 1px solid ${primaryColor};">HSN/SAC</th>` : ''}
+                        ${showQty ? `
+                            <th style="padding: 6px 8px; text-align: right; border: 1px solid ${primaryColor};">Qty</th>
+                            <th style="padding: 6px 8px; text-align: center; border: 1px solid ${primaryColor};">Unit</th>
+                        ` : ''}
+                        ${showRate ? `<th style="padding: 6px 8px; text-align: right; border: 1px solid ${primaryColor};">Rate (₹)</th>` : ''}
+                        ${showDiscount ? `<th style="padding: 6px 8px; text-align: right; border: 1px solid ${primaryColor};">Disc%</th>` : ''}
+                        ${showTaxable ? `<th style="padding: 6px 8px; text-align: right; border: 1px solid ${primaryColor};">Taxable (₹)</th>` : ''}
+                        ${showGstRate ? `<th style="padding: 6px 8px; text-align: right; border: 1px solid ${primaryColor};">GST%</th>` : ''}
+                        <th style="padding: 6px 8px; text-align: right; border: 1px solid ${primaryColor};">Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRowsHTML}
+                </tbody>
+            </table>
+
+            <!-- 5. Totals & Payment Section -->
+            <div class="inv-summary-section" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; margin-bottom: 14px;">
+                <!-- Left: Words, Bank & UPI -->
+                <div>
+                    ${showAmountInWords ? `
+                        <div style="margin-bottom: 8px;">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: ${primaryColor};">Amount in Words:</span><br>
+                            <span style="font-size: 0.80rem; font-style: italic; color: #1e293b; font-weight: 600;">${numberToWords(invoice.grandTotal)} Rupees Only</span>
+                        </div>
+                    ` : ''}
+
+                    ${showBankDetails && (st.bankName || st.bankAccount) ? `
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-top: 6px; font-size: 0.75rem;">
+                            <div style="font-weight: 700; color: ${primaryColor}; margin-bottom: 3px; font-size: 0.72rem; text-transform: uppercase;">Bank Payment Details</div>
+                            <div style="color: #334155;">Bank: <strong>${st.bankName || '-'}</strong> | A/c: <strong>${st.bankAccount || '-'}</strong></div>
+                            <div style="color: #334155;">IFSC: <strong>${st.bankIfsc || '-'}</strong> | Branch: ${st.bankBranch || '-'}</div>
+                            ${showUpi && st.companyUpiId ? `
+                                <div style="color: #059669; font-weight: 700; margin-top: 4px;">UPI ID for Instant Payment: ${st.companyUpiId}</div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Right: Summary Table -->
+                <div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.80rem;">
+                        <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 4px 6px; color:#475569;">Taxable Subtotal</td><td style="padding: 4px 6px; text-align: right; font-weight: 600;">₹${formatNumber(invoice.subtotal)}</td></tr>
+                        ${Number(invoice.totalCgst || 0) > 0 ? `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 4px 6px; color:#475569;">CGST Output</td><td style="padding: 4px 6px; text-align: right;">₹${formatNumber(invoice.totalCgst)}</td></tr>` : ''}
+                        ${Number(invoice.totalSgst || 0) > 0 ? `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 4px 6px; color:#475569;">SGST Output</td><td style="padding: 4px 6px; text-align: right;">₹${formatNumber(invoice.totalSgst)}</td></tr>` : ''}
+                        ${Number(invoice.totalIgst || 0) > 0 ? `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 4px 6px; color:#475569;">IGST Output</td><td style="padding: 4px 6px; text-align: right;">₹${formatNumber(invoice.totalIgst)}</td></tr>` : ''}
+                        ${Number(invoice.discount || 0) > 0 ? `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 4px 6px; color:#dc2626;">Discount</td><td style="padding: 4px 6px; text-align: right; color:#dc2626;">-₹${formatNumber(invoice.discount)}</td></tr>` : ''}
+                        ${Number(invoice.roundOff || 0) !== 0 ? `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 4px 6px; color:#475569;">Round Off</td><td style="padding: 4px 6px; text-align: right;">₹${formatNumber(invoice.roundOff)}</td></tr>` : ''}
+                        <tr style="background: ${primaryColor}; color: #ffffff; font-weight: 700; font-size: 0.88rem;">
+                            <td style="padding: 6px 8px;">Grand Total (INR)</td>
+                            <td style="padding: 6px 8px; text-align: right;">₹${formatNumber(invoice.grandTotal)}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 6. Terms, Declaration & Signature Footer -->
+            <div class="inv-footer-section" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-top: 14px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+                <div>
+                    ${showTerms && st.termsConditions ? `
+                        <div style="margin-bottom: 6px;">
+                            <span style="font-size: 0.72rem; font-weight: 700; color: ${primaryColor};">Terms & Conditions:</span>
+                            <div style="font-size: 0.70rem; color: #475569; line-height: 1.35;">${st.termsConditions.replace(/\n/g, '<br>')}</div>
+                        </div>
+                    ` : ''}
+                    ${st.invoiceDeclaration ? `
+                        <div style="font-size: 0.68rem; color: #64748b; font-style: italic;">${st.invoiceDeclaration}</div>
+                    ` : ''}
+                </div>
+
+                ${showSignature ? `
+                    <div style="text-align: right; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end;">
+                        <div style="font-size: 0.75rem; font-weight: 600; color: #334155;">For <strong>${st.signatoryCompany || st.companyName || 'TaxTech ERP Solutions'}</strong></div>
+                        <div style="height: 40px;"></div>
+                        <div style="font-size: 0.72rem; font-weight: 600; color: #64748b; border-top: 1px solid #94a3b8; padding-top: 4px; min-width: 140px; text-align: center;">${st.signatoryLabel || 'Authorized Signatory'}</div>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function numberToWords(num) {
+    const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+    function convertHundreds(n) {
+        if (n < 20) return a[n];
+        if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? ' ' + a[n % 10] : '');
+        return a[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' and ' + convertHundreds(n % 100) : '');
+    }
+
+    const n = Math.abs(Number(num) || 0);
+    if (n === 0) return 'Zero';
+
+    const intPart = Math.floor(n);
+    const decimal = Math.round((n - intPart) * 100);
+
+    const crore = Math.floor(intPart / 10000000);
+    const lakh = Math.floor((intPart % 10000000) / 100000);
+    const thousand = Math.floor((intPart % 100000) / 1000);
+    const hundred = Math.floor((intPart % 1000) / 100);
+    const rest = Math.floor(intPart % 100);
+
+    let words = '';
+    if (crore) words += convertHundreds(crore) + ' Crore ';
+    if (lakh) words += convertHundreds(lakh) + ' Lakh ';
+    if (thousand) words += convertHundreds(thousand) + ' Thousand ';
+    if (hundred) words += convertHundreds(hundred) + ' Hundred ';
+    if (rest) words += (words ? 'and ' : '') + convertHundreds(rest);
+    if (decimal) words += ' and ' + convertHundreds(decimal) + ' Paise';
+
+    return words.trim();
+}
+
 // Global scope exposure for inline onclick handlers
 window.editInvoice = editInvoice;
 window.viewInvoice = viewInvoice;
@@ -2492,3 +3247,8 @@ window.removeInvoiceItem = removeInvoiceItem;
 window.removePurchaseItem = removePurchaseItem;
 window.closeAllComboboxes = closeAllComboboxes;
 window.setupProductCombobox = setupProductCombobox;
+window.openInvoicePreviewModal = openInvoicePreviewModal;
+window.closeInvoicePreviewModal = closeInvoicePreviewModal;
+window.setLogoImage = setLogoImage;
+window.getLiveFormatSettings = getLiveFormatSettings;
+window.numberToWords = numberToWords;

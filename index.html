@@ -837,6 +837,167 @@
                         </form>
                     </div>
 
+                    <!-- INVOICE FORMAT, LOGO & OUTPUT STYLE SETTINGS -->
+                    <div class="card settings-card invoice-format-card">
+                        <div class="card-header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <h3 style="margin: 0;">Invoice Output Design, Logo & Alignment Settings</h3>
+                            <button type="button" class="btn btn-secondary btn-sm" id="previewSampleInvoiceBtn">👁️ Live Invoice Preview</button>
+                        </div>
+                        <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 18px;">
+                            Configure company logo branding, header text alignment, color palette themes, invoice typography, dynamic table columns, and section visibility for printing and PDF invoices.
+                        </p>
+                        <form id="invoiceFormatSettingsForm">
+                            <!-- Section 1: Logo & Alignment -->
+                            <div class="settings-subgroup">
+                                <h4 class="settings-subgroup-title">Company Logo & Layout Alignment</h4>
+                                <div class="form-row">
+                                    <div class="form-group" style="flex: 1.5;">
+                                        <label>Company Logo</label>
+                                        <div class="logo-upload-wrapper">
+                                            <div class="logo-preview-box" id="logoPreviewBox">
+                                                <img id="logoPreviewImg" alt="Company Logo" style="display:none; max-height: 75px; max-width: 180px; object-fit: contain;">
+                                                <span class="logo-placeholder-text" id="logoPlaceholderText">No logo uploaded (PNG, JPG, WEBP)</span>
+                                            </div>
+                                            <div class="logo-actions" style="display: flex; gap: 8px; margin-top: 8px; align-items: center;">
+                                                <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/jpg,image/webp" style="display:none;">
+                                                <input type="hidden" name="companyLogo" id="companyLogoData">
+                                                <input type="hidden" name="invoiceLogo" id="invoiceLogoData">
+                                                <button type="button" class="btn btn-secondary btn-sm" id="chooseLogoBtn">📁 Upload Logo</button>
+                                                <button type="button" class="btn btn-danger btn-sm" id="removeLogoBtn" style="display:none;">Remove</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="flex: 1;">
+                                        <label>Logo Size (Width)</label>
+                                        <div class="range-with-val" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                                            <input type="range" name="invoiceLogoWidth" id="invoiceLogoWidth" min="50" max="160" value="100" step="5" style="flex: 1;">
+                                            <span id="logoWidthDisplay" style="font-weight: 600; font-size: 0.85rem; min-width: 50px;">100 px</span>
+                                        </div>
+                                        <div style="margin-top: 14px;">
+                                            <label class="checkbox-inline" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                                <input type="checkbox" name="showLogo" id="showLogo" checked>
+                                                <span style="font-size: 0.88rem; font-weight: 500;">Print Logo on Invoice</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Logo Position (Alignment)</label>
+                                        <div class="pill-segmented-group" id="logoAlignGroup">
+                                            <button type="button" class="pill-seg-btn active" data-align="left">Left</button>
+                                            <button type="button" class="pill-seg-btn" data-align="center">Center</button>
+                                            <button type="button" class="pill-seg-btn" data-align="right">Right</button>
+                                        </div>
+                                        <input type="hidden" name="invoiceLogoAlign" id="invoiceLogoAlign" value="left">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Company Header Text Alignment</label>
+                                        <div class="pill-segmented-group" id="headerAlignGroup">
+                                            <button type="button" class="pill-seg-btn active" data-align="left">Left Align</button>
+                                            <button type="button" class="pill-seg-btn" data-align="center">Centered</button>
+                                            <button type="button" class="pill-seg-btn" data-align="right">Right Align</button>
+                                        </div>
+                                        <input type="hidden" name="invoiceHeaderAlign" id="invoiceHeaderAlign" value="left">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 2: Colors, Font & Layout Template -->
+                            <div class="settings-subgroup">
+                                <h4 class="settings-subgroup-title">Theme Palette, Typography & Layout Template</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Theme Accent Color</label>
+                                        <div class="theme-palette-picker" style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+                                            <div class="palette-swatches" id="colorSwatches" style="display: flex; gap: 6px;">
+                                                <button type="button" class="color-swatch active" data-color="#1a1a2e" style="background:#1a1a2e;" title="Classic Navy"></button>
+                                                <button type="button" class="color-swatch" data-color="#4f46e5" style="background:#4f46e5;" title="Tech Indigo"></button>
+                                                <button type="button" class="color-swatch" data-color="#0284c7" style="background:#0284c7;" title="Steel Blue"></button>
+                                                <button type="button" class="color-swatch" data-color="#059669" style="background:#059669;" title="Emerald Green"></button>
+                                                <button type="button" class="color-swatch" data-color="#be123c" style="background:#be123c;" title="Ruby Crimson"></button>
+                                                <button type="button" class="color-swatch" data-color="#1f2937" style="background:#1f2937;" title="Slate Charcoal"></button>
+                                            </div>
+                                            <div class="custom-color-input-wrap" style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="color" name="invoiceThemeColor" id="invoiceThemeColor" value="#1a1a2e" style="width: 32px; height: 32px; border: none; border-radius: 6px; cursor: pointer; padding: 0;">
+                                                <span id="themeColorHex" style="font-family: monospace; font-size: 0.85rem; font-weight: 600;">#1a1a2e</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Invoice Font (Typography)</label>
+                                        <select name="invoiceFont" id="invoiceFont">
+                                            <option value="Helvetica">Helvetica (Clean & Modern Sans-Serif)</option>
+                                            <option value="Times-Roman">Times-Roman (Classic Corporate Serif)</option>
+                                            <option value="Courier">Courier (Technical & Monospace)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Invoice Layout Template</label>
+                                        <select name="invoiceTemplate" id="invoiceTemplate">
+                                            <option value="modern">Modern Accent (Colored Headers & Shaded Grids)</option>
+                                            <option value="corporate">Classic Corporate (Formal Double Borders & Boxes)</option>
+                                            <option value="minimal">Minimalist Clean (Compact Dividers & Light Tones)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 3: Document Titles, Payment UPI & Signature -->
+                            <div class="settings-subgroup">
+                                <h4 class="settings-subgroup-title">Document Title, UPI Payment & Signatory</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Invoice Title</label>
+                                        <input type="text" name="invoiceTitle" id="invoiceTitle" value="TAX INVOICE" placeholder="e.g. TAX INVOICE, BILL OF SUPPLY">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Subtitle / Copy Indicator</label>
+                                        <input type="text" name="invoiceSubtitle" id="invoiceSubtitle" value="Original for Recipient" placeholder="e.g. Original for Recipient">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Company UPI ID (for QR / Quick Pay)</label>
+                                        <input type="text" name="companyUpiId" id="companyUpiId" placeholder="e.g. yourcompany@upi or 9876543210@paytm">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Signatory Company Name</label>
+                                        <input type="text" name="signatoryCompany" id="signatoryCompany" placeholder="Leave empty to use Company Name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Signatory Designation Label</label>
+                                        <input type="text" name="signatoryLabel" id="signatoryLabel" value="Authorized Signatory" placeholder="e.g. Authorized Signatory">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Invoice Declaration Statement</label>
+                                    <textarea name="invoiceDeclaration" id="invoiceDeclaration" rows="2" placeholder="e.g. We declare that this invoice shows the actual price of the goods or services described and that all particulars are true and correct."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Section 4: Table Columns & Section Visibility Toggles -->
+                            <div class="settings-subgroup">
+                                <h4 class="settings-subgroup-title">Table Columns & Section Visibility Controls</h4>
+                                <p style="font-size: 0.82rem; color: #64748b; margin-bottom: 10px;">Select which columns and optional sections appear on your invoice.</p>
+                                <div class="checkbox-grid-settings" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px;">
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showHsn" id="showHsn" checked> <span>HSN/SAC Code Column</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showQty" id="showQty" checked> <span>Qty & Unit Columns</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showRate" id="showRate" checked> <span>Rate (Price) Column</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showDiscount" id="showDiscount" checked> <span>Discount % Column</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showTaxable" id="showTaxable" checked> <span>Taxable Amount Column</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showGstRate" id="showGstRate" checked> <span>GST Rate % Column</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showAmountInWords" id="showAmountInWords" checked> <span>Amount in Words (INR)</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showBankDetails" id="showBankDetails" checked> <span>Bank Account Box</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showUpi" id="showUpi" checked> <span>UPI ID & QR Box</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showTerms" id="showTerms" checked> <span>Terms & Conditions Box</span></label>
+                                    <label class="checkbox-setting-item"><input type="checkbox" name="showSignature" id="showSignature" checked> <span>Authorized Signatory</span></label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
                     <div class="card settings-card">
                         <h3>Save Settings</h3>
                         <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 16px;">Save company, bank, and invoice configuration into the database.</p>
@@ -976,6 +1137,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" id="cancelInvoiceBtn">Cancel</button>
+                    <button type="button" class="btn btn-secondary" id="previewInvoiceDraftBtn">👁️ Preview</button>
                     <button type="button" class="btn btn-primary" id="saveInvoiceBtn">Save Invoice</button>
                     <button type="button" class="btn btn-success" id="generatePdfBtn" style="display:none;">Generate PDF</button>
                 </div>
@@ -1420,6 +1582,29 @@
                     <button type="submit" class="btn btn-primary">Save Ledger</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL 7: LIVE INVOICE PREVIEW & PRINT -->
+    <div class="modal invoice-preview-modal" id="invoicePreviewModal">
+        <div class="modal-overlay" id="invoicePreviewModalOverlay"></div>
+        <div class="modal-content extra-large" style="max-width: 900px; width: 95vw; max-height: 92vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h3 id="invoicePreviewModalTitle" style="margin: 0;">Invoice Print & Layout Preview</h3>
+                    <span class="preview-template-badge" id="previewTemplateBadge" style="font-size: 0.75rem; background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 999px; font-weight: 600;">Standard Template</span>
+                </div>
+                <div class="preview-actions-bar" style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn btn-primary btn-sm" id="printPreviewInvoiceBtn">🖨️ Print Invoice</button>
+                    <button type="button" class="btn btn-success btn-sm" id="exportPdfPreviewBtn">📄 Save PDF</button>
+                    <button class="modal-close" id="closeInvoicePreviewModal">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body preview-scroll-body" style="overflow-y: auto; background: #e2e8f0; padding: 20px; flex: 1; display: flex; justify-content: center;">
+                <div class="invoice-paper-sheet" id="invoicePaperPreview">
+                    <!-- Dynamic live invoice content rendered here by renderer.js -->
+                </div>
+            </div>
         </div>
     </div>
 
