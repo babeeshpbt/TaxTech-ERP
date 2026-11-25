@@ -583,6 +583,24 @@ function createWindow() {
               checks.push({ name: 'Dropdown closes automatically after option selection', passed: !posWrap.classList.contains('is-open') });
             }
 
+            // 13. Excel Database & FY 2025-26 Sample Data Buttons
+            const loadExcelBtn = document.getElementById('loadExcelDbBtn');
+            const loadSampleBtn = document.getElementById('loadSampleFy2526Btn');
+            const exportSampleBtn = document.getElementById('exportSampleFy2526Btn');
+            checks.push({
+              name: 'Excel Database Loading and Sample buttons exist in UI',
+              passed: !!loadExcelBtn && !!loadSampleBtn && !!exportSampleBtn
+            });
+
+            // 14. API Exposure for Excel loading
+            const hasLoadExcelApi = typeof window.api?.loadExcelDb === 'function';
+            const hasLoadSampleApi = typeof window.api?.loadSampleFy2526 === 'function';
+            const hasExportSampleApi = typeof window.api?.exportSampleFy2526 === 'function';
+            checks.push({
+              name: 'Excel database loading & sample APIs exposed in window.api',
+              passed: hasLoadExcelApi && hasLoadSampleApi && hasExportSampleApi
+            });
+
             return checks;
           })()
         `);
@@ -2153,6 +2171,83 @@ ipcMain.handle('reset-data', async () => {
     }
     await initializeExcel();
     return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Load external Excel file as active database
+ipcMain.handle('load-excel-db', async () => {
+  ensureDataDir();
+  const { filePaths } = await dialog.showOpenDialog({
+    title: 'Select Excel Database File to Load',
+    filters: [{ name: 'Excel Files (*.xlsx)', extensions: ['xlsx'] }],
+    properties: ['openFile']
+  });
+  if (!filePaths || filePaths.length === 0) return { success: false, cancelled: true };
+
+  const selectedPath = filePaths[0];
+  try {
+    const testWb = new ExcelJS.Workbook();
+    await testWb.xlsx.readFile(selectedPath);
+
+    const sheetNames = testWb.worksheets.map(w => w.name);
+    if (!sheetNames || sheetNames.length === 0) {
+      return { success: false, error: 'The selected Excel file contains no worksheets.' };
+    }
+
+    // Safety backup of current database before overwriting
+    if (fs.existsSync(EXCEL_FILE)) {
+      const backupDir = path.join(DATA_DIR, 'backups');
+      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      fs.copyFileSync(EXCEL_FILE, path.join(backupDir, `gst_backup_pre_load_${stamp}.xlsx`));
+    }
+
+    // Copy selected file to active DB
+    fs.copyFileSync(selectedPath, EXCEL_FILE);
+
+    // Initialize to verify standard structure and missing sheets
+    await initializeExcel();
+
+    return { success: true, path: selectedPath, sheetCount: sheetNames.length, sheets: sheetNames };
+  } catch (err) {
+    return { success: false, error: 'Could not load Excel file: ' + err.message };
+  }
+});
+
+// Instantly load comprehensive FY 2025-26 dummy database
+ipcMain.handle('load-sample-fy2526', async () => {
+  ensureDataDir();
+  try {
+    if (fs.existsSync(EXCEL_FILE)) {
+      const backupDir = path.join(DATA_DIR, 'backups');
+      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      fs.copyFileSync(EXCEL_FILE, path.join(backupDir, `gst_backup_pre_sample_${stamp}.xlsx`));
+    }
+
+    const { createFY2526Workbook } = require('./sampleDataFy2526');
+    await createFY2526Workbook(EXCEL_FILE);
+    return { success: true, path: EXCEL_FILE };
+  } catch (err) {
+    return { success: false, error: 'Failed to load FY 2025-26 sample data: ' + err.message };
+  }
+});
+
+// Export FY 2025-26 standalone dummy database to user-chosen path
+ipcMain.handle('export-sample-fy2526', async () => {
+  const { filePath } = await dialog.showSaveDialog({
+    title: 'Save FY 2025-26 Sample Excel Database',
+    defaultPath: 'gst_billing_dummy_fy2025_26.xlsx',
+    filters: [{ name: 'Excel Files (*.xlsx)', extensions: ['xlsx'] }]
+  });
+  if (!filePath) return { success: false, cancelled: true };
+
+  try {
+    const { createFY2526Workbook } = require('./sampleDataFy2526');
+    await createFY2526Workbook(filePath);
+    return { success: true, path: filePath };
   } catch (err) {
     return { success: false, error: err.message };
   }

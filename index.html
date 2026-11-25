@@ -1017,6 +1017,30 @@
                         </div>
                     </div>
 
+                    <div class="card settings-card" style="border-left: 4px solid var(--primary-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <h3 style="margin: 0;">Excel Database Loading & FY 2025-26 Sample Data</h3>
+                            <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: 600; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem;">FY 2025-26 Ready</span>
+                        </div>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 16px;">
+                            Load your own custom Excel accounting file or instantly populate the app with a complete, mathematically balanced Indian ERP sample database for the full Financial Year 2025-26 (16 Invoices, 8 Purchases, 24 Vouchers, balanced Ledgers & Products).
+                        </p>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                            <button type="button" class="btn btn-primary" id="loadExcelDbBtn" title="Select and load any .xlsx database file from your computer">
+                                📥 Load Data from Excel File...
+                            </button>
+                            <button type="button" class="btn btn-success" id="loadSampleFy2526Btn" style="background: #059669; border-color: #059669;" title="Instantly load the full FY 2025-26 sample dataset into the active database">
+                                ⚡ Load FY 2025-26 Sample Database
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="exportSampleFy2526Btn" title="Save a standalone copy of the FY 2025-26 sample Excel file to your PC">
+                                💾 Save FY 2025-26 Excel to File
+                            </button>
+                        </div>
+                        <p style="color: #64748b; font-size: 0.8rem; margin: 0;">
+                            💡 Note: Loading an Excel database automatically creates a safety backup of your existing database before applying changes.
+                        </p>
+                    </div>
+
                     <div class="card settings-card">
                         <h3>Backup & Restore</h3>
                         <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 16px;">Backup your entire accounting database (products, clients, purchases, invoices, ledgers, vouchers) to Excel.</p>

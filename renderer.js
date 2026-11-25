@@ -333,6 +333,9 @@ function setupEventListeners() {
     document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettings);
     document.getElementById('backupDataBtn')?.addEventListener('click', backupData);
     document.getElementById('restoreDataBtn')?.addEventListener('click', restoreData);
+    document.getElementById('loadExcelDbBtn')?.addEventListener('click', loadExcelDb);
+    document.getElementById('loadSampleFy2526Btn')?.addEventListener('click', loadSampleFy2526);
+    document.getElementById('exportSampleFy2526Btn')?.addEventListener('click', exportSampleFy2526);
     document.getElementById('openDbFolderBtn')?.addEventListener('click', openDbFolder);
     document.getElementById('openDbFileBtn')?.addEventListener('click', openDbFile);
     document.getElementById('resetDataBtn')?.addEventListener('click', resetData);
@@ -2914,6 +2917,55 @@ async function restoreData() {
         }
     } catch (err) {
         showToast('Restore error: ' + err.message, 'error');
+    }
+}
+
+async function loadExcelDb() {
+    if (!confirm('Loading an Excel file will replace the current active database. An automatic backup will be created first. Continue?')) return;
+    try {
+        const result = await ipcRenderer.invoke('load-excel-db');
+        if (result.success) {
+            showToast(`Excel database loaded successfully! (${result.sheetCount || 0} sheets found)`, 'success');
+            await loadAllData();
+            updateDashboard();
+            renderAllTables();
+            syncAllSearchableDropdowns();
+        } else if (!result.cancelled) {
+            showToast('Load failed: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Load error: ' + err.message, 'error');
+    }
+}
+
+async function loadSampleFy2526() {
+    if (!confirm('Load the complete FY 2025-26 Indian ERP sample database (16 Sales Invoices, 8 Purchases, 24 Vouchers, Products, Clients & balanced Ledgers)? Existing database will be backed up automatically. Continue?')) return;
+    try {
+        const result = await ipcRenderer.invoke('load-sample-fy2526');
+        if (result.success) {
+            showToast('FY 2025-26 sample database loaded successfully!', 'success');
+            await loadAllData();
+            updateDashboard();
+            renderAllTables();
+            syncAllSearchableDropdowns();
+        } else if (!result.cancelled) {
+            showToast('Failed to load sample database: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Sample load error: ' + err.message, 'error');
+    }
+}
+
+async function exportSampleFy2526() {
+    try {
+        const result = await ipcRenderer.invoke('export-sample-fy2526');
+        if (result.success) {
+            showToast('FY 2025-26 sample Excel file exported successfully!', 'success');
+        } else if (!result.cancelled) {
+            showToast('Export cancelled or failed: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        showToast('Export error: ' + err.message, 'error');
     }
 }
 

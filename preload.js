@@ -78,6 +78,9 @@ contextBridge.exposeInMainWorld('api', {
   openDbFile: () => ipcRenderer.invoke('open-db-file'),
   backupData: () => ipcRenderer.invoke('backup-data'),
   restoreData: () => ipcRenderer.invoke('restore-data'),
+  loadExcelDb: () => ipcRenderer.invoke('load-excel-db'),
+  loadSampleFy2526: () => ipcRenderer.invoke('load-sample-fy2526'),
+  exportSampleFy2526: () => ipcRenderer.invoke('export-sample-fy2526'),
   exportExcel: (options) => ipcRenderer.invoke('export-excel', options),
   resetData: () => ipcRenderer.invoke('reset-data')
 });
