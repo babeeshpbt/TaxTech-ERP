@@ -66,6 +66,7 @@ contextBridge.exposeInMainWorld('api', {
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+  selectLogoFile: () => ipcRenderer.invoke('select-logo-file'),
 
   // PDF Generation
   generateInvoicePDF: (data) => ipcRenderer.invoke('generate-invoice-pdf', data),

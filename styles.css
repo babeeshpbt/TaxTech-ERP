@@ -1370,6 +1370,13 @@ body {
     background: var(--bg-primary, #ffffff);
     padding: 8px;
     box-sizing: border-box;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.logo-preview-box:hover {
+    border-color: var(--primary-color, #2563eb);
+    background-color: var(--bg-secondary, #f8fafc);
 }
 
 .logo-placeholder-text {

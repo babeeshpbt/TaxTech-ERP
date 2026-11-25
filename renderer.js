@@ -2336,20 +2336,23 @@ function populateSettingsForm(dbPath = '') {
     });
 
     // Populate logo preview and storage fields
-    const logoData = settings.companyLogo || settings.invoiceLogo;
+    const rawLogo = settings.companyLogo || settings.invoiceLogo;
+    const logoDataUrl = settings.companyLogoDataUrl || (rawLogo && rawLogo.startsWith('data:image') ? rawLogo : '');
     const logoImg = document.getElementById('logoPreviewImg');
     const logoPlaceholder = document.getElementById('logoPlaceholderText');
     const removeLogoBtn = document.getElementById('removeLogoBtn');
     const compLogoInput = document.getElementById('companyLogoData');
     const invLogoInput = document.getElementById('invoiceLogoData');
 
-    if (logoData && logoImg) {
-        logoImg.src = logoData;
-        logoImg.style.display = 'block';
+    if (rawLogo) {
+        if (logoImg) {
+            logoImg.src = logoDataUrl || rawLogo;
+            logoImg.style.display = 'block';
+        }
         if (logoPlaceholder) logoPlaceholder.style.display = 'none';
         if (removeLogoBtn) removeLogoBtn.style.display = 'inline-flex';
-        if (compLogoInput) compLogoInput.value = logoData;
-        if (invLogoInput) invLogoInput.value = logoData;
+        if (compLogoInput) compLogoInput.value = rawLogo;
+        if (invLogoInput) invLogoInput.value = rawLogo;
     } else {
         if (logoImg) {
             logoImg.src = '';
@@ -2567,7 +2570,7 @@ function showToast(message, type = 'success') {
 // ==========================================================
 let currentPreviewData = null;
 
-function setLogoImage(dataUrl) {
+function setLogoImage(dataUrl, filePath = '') {
     const logoImg = document.getElementById('logoPreviewImg');
     const logoPlaceholder = document.getElementById('logoPlaceholderText');
     const removeLogoBtn = document.getElementById('removeLogoBtn');
@@ -2581,8 +2584,17 @@ function setLogoImage(dataUrl) {
         }
         if (logoPlaceholder) logoPlaceholder.style.display = 'none';
         if (removeLogoBtn) removeLogoBtn.style.display = 'inline-flex';
-        if (compLogoInput) compLogoInput.value = dataUrl;
-        if (invLogoInput) invLogoInput.value = dataUrl;
+
+        // If dataUrl is too large (> 30000 chars) for Excel cell and filePath is provided, store filePath
+        const storeVal = (dataUrl.length > 30000 && filePath) ? filePath : dataUrl;
+        if (compLogoInput) compLogoInput.value = storeVal;
+        if (invLogoInput) invLogoInput.value = storeVal;
+
+        if (settings) {
+            settings.companyLogo = storeVal;
+            settings.invoiceLogo = storeVal;
+            settings.companyLogoDataUrl = dataUrl;
+        }
     } else {
         if (logoImg) {
             logoImg.src = '';
@@ -2594,23 +2606,46 @@ function setLogoImage(dataUrl) {
         if (invLogoInput) invLogoInput.value = '';
         const fileInput = document.getElementById('logoFileInput');
         if (fileInput) fileInput.value = '';
+
+        if (settings) {
+            settings.companyLogo = '';
+            settings.invoiceLogo = '';
+            settings.companyLogoDataUrl = '';
+        }
     }
 }
 
 function initInvoiceFormatControls() {
     // 1. Logo Upload & Remove
-    document.getElementById('chooseLogoBtn')?.addEventListener('click', async () => {
+    document.getElementById('chooseLogoBtn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
         try {
             const res = await ipcRenderer.invoke('select-logo-file');
-            if (res && res.success && res.base64) {
-                setLogoImage(res.base64);
-                showToast('Company logo uploaded successfully', 'success');
+            if (res && res.cancelled) {
+                return; // User clicked Cancel in file dialog
+            }
+            if (res && res.success) {
+                const logo = res.dataUrl || res.base64;
+                if (logo) {
+                    setLogoImage(logo, res.savedPath || res.filePath);
+                    showToast('Company logo uploaded successfully!', 'success');
+                    return;
+                }
+            } else if (res && res.error) {
+                showToast('Failed to load logo: ' + res.error, 'error');
                 return;
             }
         } catch (err) {
-            console.log('select-logo-file fallback to DOM input:', err);
+            console.warn('select-logo-file IPC error, using DOM file input:', err);
+            document.getElementById('logoFileInput')?.click();
         }
-        document.getElementById('logoFileInput')?.click();
+    });
+
+    // Also clicking the logo box triggers file selection
+    document.getElementById('logoPreviewBox')?.addEventListener('click', (e) => {
+        if (e.target.id !== 'removeLogoBtn') {
+            document.getElementById('chooseLogoBtn')?.click();
+        }
     });
 
     document.getElementById('logoFileInput')?.addEventListener('change', (e) => {
@@ -2618,13 +2653,20 @@ function initInvoiceFormatControls() {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (evt) => {
-            setLogoImage(evt.target.result);
-            showToast('Company logo loaded successfully', 'success');
+            const dataUrl = evt.target.result;
+            if (dataUrl) {
+                setLogoImage(dataUrl);
+                showToast('Company logo uploaded successfully!', 'success');
+            }
+        };
+        reader.onerror = (err) => {
+            showToast('Error reading selected image: ' + err.message, 'error');
         };
         reader.readAsDataURL(file);
     });
 
-    document.getElementById('removeLogoBtn')?.addEventListener('click', () => {
+    document.getElementById('removeLogoBtn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
         setLogoImage('');
         showToast('Logo removed', 'info');
     });

@@ -531,6 +531,21 @@ function createWindow() {
               checks.push({ name: 'Live Invoice Preview Modal closes cleanly', passed: !previewModal?.classList.contains('active') });
             }
 
+            // 11. Logo Upload & State Setting Functionality
+            if (typeof setLogoImage === 'function') {
+              const testLogoData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+              setLogoImage(testLogoData);
+              const logoImg = document.getElementById('logoPreviewImg');
+              const compInput = document.getElementById('companyLogoData');
+              const removeBtn = document.getElementById('removeLogoBtn');
+              const logoSetPassed = logoImg?.style.display === 'block' && compInput?.value === testLogoData && removeBtn?.style.display !== 'none';
+              checks.push({ name: 'Logo display & state update works on upload', passed: !!logoSetPassed });
+
+              removeBtn?.click();
+              const logoCleared = logoImg?.style.display === 'none' && !compInput?.value && removeBtn?.style.display === 'none';
+              checks.push({ name: 'Logo removal resets state & UI cleanly', passed: !!logoCleared });
+            }
+
             return checks;
           })()
         `);
@@ -1599,6 +1614,7 @@ async function calculateFinancialReports() {
 // IPC HANDLERS: SETTINGS & UTILS
 // ==========================================
 ipcMain.handle('get-settings', async () => {
+  ensureDataDir();
   const settings = await readSheet('CompanySettings');
   const obj = {};
   settings.forEach(s => {
@@ -1606,6 +1622,20 @@ ipcMain.handle('get-settings', async () => {
     const v = s.value !== undefined ? s.value : s.Value;
     if (k) obj[k] = v;
   });
+
+  // If companyLogo is stored as a file path, convert to Data URL so it renders reliably in the DOM
+  const logo = obj.companyLogo || obj.invoiceLogo;
+  if (logo && !logo.startsWith('data:image') && fs.existsSync(logo)) {
+    try {
+      const ext = path.extname(logo).toLowerCase().replace('.', '');
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      const fileBuffer = fs.readFileSync(logo);
+      obj.companyLogoDataUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+    } catch (e) {
+      console.error('Error generating logo Data URL in get-settings:', e);
+    }
+  }
+
   return obj;
 });
 
@@ -1616,24 +1646,47 @@ ipcMain.handle('save-settings', async (_, settings) => {
 });
 
 ipcMain.handle('select-logo-file', async () => {
-  const result = await dialog.showOpenDialog({
+  ensureDataDir();
+  const focusedWin = BrowserWindow.getFocusedWindow();
+  const options = {
     title: 'Select Company Logo Image',
     filters: [
       { name: 'Image Files', extensions: ['png', 'jpg', 'jpeg', 'webp'] }
     ],
     properties: ['openFile']
-  });
-  if (result.canceled || result.filePaths.length === 0) {
+  };
+
+  const result = focusedWin
+    ? await dialog.showOpenDialog(focusedWin, options)
+    : await dialog.showOpenDialog(options);
+
+  if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
     return { success: false, cancelled: true };
   }
+
   try {
-    const filePath = result.filePaths[0];
-    const ext = path.extname(filePath).toLowerCase().replace('.', '');
+    const srcPath = result.filePaths[0];
+    const ext = path.extname(srcPath).toLowerCase().replace('.', '');
     const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-    const fileBuffer = fs.readFileSync(filePath);
-    const dataUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
-    return { success: true, dataUrl, filePath };
+    const fileBuffer = fs.readFileSync(srcPath);
+
+    // Save a copy in DATA_DIR
+    const savedLogoPath = path.join(DATA_DIR, `company_logo.${ext}`);
+    fs.writeFileSync(savedLogoPath, fileBuffer);
+
+    const base64Str = fileBuffer.toString('base64');
+    const dataUrl = `data:${mimeType};base64,${base64Str}`;
+
+    return {
+      success: true,
+      dataUrl,
+      base64: dataUrl,
+      filePath: savedLogoPath,
+      savedPath: savedLogoPath,
+      originalPath: srcPath
+    };
   } catch (err) {
+    console.error('Error reading selected logo file:', err);
     return { success: false, error: err.message };
   }
 });
