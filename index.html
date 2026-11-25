@@ -727,7 +727,7 @@
                 <div class="settings-grid">
                     <div class="card settings-card">
                         <h3>Company Information</h3>
-                        <form id="companySettingsForm">
+                        <form id="companySettingsForm" novalidate>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Company Name *</label>
@@ -789,7 +789,7 @@
 
                     <div class="card settings-card">
                         <h3>Bank Details</h3>
-                        <form id="bankSettingsForm">
+                        <form id="bankSettingsForm" novalidate>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Bank Name</label>
@@ -815,7 +815,7 @@
 
                     <div class="card settings-card">
                         <h3>Voucher & Invoice Series</h3>
-                        <form id="invoiceSettingsForm">
+                        <form id="invoiceSettingsForm" novalidate>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Invoice Prefix</label>
@@ -846,7 +846,7 @@
                         <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 18px;">
                             Configure company logo branding, header text alignment, color palette themes, invoice typography, dynamic table columns, and section visibility for printing and PDF invoices.
                         </p>
-                        <form id="invoiceFormatSettingsForm">
+                        <form id="invoiceFormatSettingsForm" novalidate>
                             <!-- Section 1: Logo & Alignment -->
                             <div class="settings-subgroup">
                                 <h4 class="settings-subgroup-title">Company Logo & Layout Alignment</h4>
@@ -1043,7 +1043,7 @@
                 <h3 id="invoiceModalTitle">Create Sales Invoice</h3>
                 <button class="modal-close" id="closeInvoiceModal">&times;</button>
             </div>
-            <form id="invoiceForm">
+            <form id="invoiceForm" novalidate>
                 <div class="modal-body">
                     <div class="invoice-header-section">
                         <div class="form-row">
@@ -1153,7 +1153,7 @@
                 <h3 id="purchaseModalTitle">Record Purchase Bill (Inward)</h3>
                 <button class="modal-close" id="closePurchaseModal">&times;</button>
             </div>
-            <form id="purchaseForm">
+            <form id="purchaseForm" novalidate>
                 <div class="modal-body">
                     <div class="invoice-header-section">
                         <div class="form-row">
@@ -1259,7 +1259,7 @@
                 <h3 id="productModalTitle">Add Item / Service</h3>
                 <button class="modal-close" id="closeProductModal">&times;</button>
             </div>
-            <form id="productForm">
+            <form id="productForm" novalidate>
                 <input type="hidden" name="id" id="productId">
                 <div class="modal-body">
                     <!-- Goods vs Service Selection -->
@@ -1335,7 +1335,7 @@
                 <h3 id="clientModalTitle">Add Party</h3>
                 <button class="modal-close" id="closeClientModal">&times;</button>
             </div>
-            <form id="clientForm">
+            <form id="clientForm" novalidate>
                 <input type="hidden" name="id" id="clientId">
                 <div class="modal-body">
                     <div class="form-row">
@@ -1440,7 +1440,7 @@
                 <h3 id="voucherModalTitle">Record Accounting Voucher</h3>
                 <button class="modal-close" id="closeVoucherModal">&times;</button>
             </div>
-            <form id="voucherForm">
+            <form id="voucherForm" novalidate>
                 <input type="hidden" name="id" id="voucherId">
                 <div class="modal-body">
                     <div class="form-row">
@@ -1546,7 +1546,7 @@
                 <h3 id="ledgerModalTitle">Create Accounting Ledger</h3>
                 <button class="modal-close" id="closeLedgerModal">&times;</button>
             </div>
-            <form id="ledgerForm">
+            <form id="ledgerForm" novalidate>
                 <input type="hidden" name="id" id="ledgerId">
                 <div class="modal-body">
                     <div class="form-group">

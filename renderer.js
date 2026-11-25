@@ -79,9 +79,11 @@ const indianStates = [
 function initApp() {
     setupEventListeners();
     populateStateDropdowns();
+    initAllSearchableDropdowns();
     loadAllData().then(() => {
         updateDashboard();
         renderAllTables();
+        syncAllSearchableDropdowns();
     }).catch(err => {
         console.error('Error during initial load:', err);
     });
@@ -636,12 +638,430 @@ function applyTheme(theme) {
 }
 
 // ==========================================================
+// UNIVERSAL SEARCHABLE DROPDOWN (COMBOBOX) ENGINE
+// ==========================================================
+const searchableSelectInstances = new Map();
+
+function closeAllSearchableDropdowns() {
+    document.querySelectorAll('.searchable-select-wrap.is-open').forEach(wrap => {
+        wrap.classList.remove('is-open');
+        const dropdown = wrap.querySelector('.searchable-select-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        const trigger = wrap.querySelector('.searchable-select-trigger');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    });
+}
+
+// Global click outside listener for all searchable dropdowns
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.searchable-select-wrap')) {
+        closeAllSearchableDropdowns();
+    }
+});
+
+function escapeRegExp(string) {
+    return String(string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function makeSearchableSelect(select) {
+    if (!select || select.tagName !== 'SELECT') return null;
+    if (select.dataset.searchableInitialized === 'true') {
+        const existing = searchableSelectInstances.get(select);
+        if (existing) {
+            existing.sync();
+            return existing;
+        }
+    }
+
+    select.dataset.searchableInitialized = 'true';
+
+    // Hide native select visually while keeping it fully functional in the DOM
+    select.style.cssText = 'position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; border: 0 !important; opacity: 0 !important; pointer-events: none !important;';
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+
+    // Create wrapper
+    const wrap = document.createElement('div');
+    wrap.className = 'searchable-select-wrap';
+    if (select.id) wrap.dataset.forSelect = select.id;
+
+    // Create trigger
+    const trigger = document.createElement('div');
+    trigger.className = 'searchable-select-trigger';
+    trigger.tabIndex = select.disabled ? -1 : 0;
+    trigger.setAttribute('role', 'combobox');
+    trigger.setAttribute('aria-expanded', 'false');
+
+    const label = document.createElement('span');
+    label.className = 'searchable-select-label is-placeholder';
+    label.textContent = 'Select...';
+
+    const icons = document.createElement('div');
+    icons.className = 'searchable-select-icons';
+    icons.innerHTML = `
+        <span class="searchable-select-arrow">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </span>
+    `;
+
+    trigger.appendChild(label);
+    trigger.appendChild(icons);
+    wrap.appendChild(trigger);
+
+    // Create dropdown menu
+    const dropdown = document.createElement('div');
+    dropdown.className = 'searchable-select-dropdown';
+    dropdown.style.display = 'none';
+
+    // Search header
+    const searchHeader = document.createElement('div');
+    searchHeader.className = 'searchable-select-search-header';
+
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'searchable-input-wrapper';
+    inputWrap.innerHTML = `
+        <svg class="searchable-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+    `;
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'searchable-search-input';
+    searchInput.placeholder = '🔍 Search option...';
+    searchInput.autocomplete = 'off';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'searchable-clear-btn';
+    clearBtn.innerHTML = '&times;';
+    clearBtn.style.display = 'none';
+
+    inputWrap.appendChild(searchInput);
+    inputWrap.appendChild(clearBtn);
+
+    const countBadge = document.createElement('span');
+    countBadge.className = 'searchable-count-badge';
+    countBadge.textContent = '0 items';
+
+    searchHeader.appendChild(inputWrap);
+    searchHeader.appendChild(countBadge);
+    dropdown.appendChild(searchHeader);
+
+    // Options list
+    const optionsList = document.createElement('div');
+    optionsList.className = 'searchable-select-options-list';
+    optionsList.setAttribute('role', 'listbox');
+    dropdown.appendChild(optionsList);
+
+    wrap.appendChild(dropdown);
+
+    // Insert wrap right after select
+    if (select.nextSibling) {
+        select.parentNode.insertBefore(wrap, select.nextSibling);
+    } else {
+        select.parentNode.appendChild(wrap);
+    }
+
+    let activeFilterQuery = '';
+
+    function highlightMatch(text, query) {
+        if (!query) return escapeHtml(text);
+        const safeQuery = escapeRegExp(query);
+        const regex = new RegExp(`(${safeQuery})`, 'gi');
+        return escapeHtml(text).replace(regex, '<mark class="searchable-highlight">$1</mark>');
+    }
+
+    function renderOptions(query = '') {
+        activeFilterQuery = (query || '').trim().toLowerCase();
+        optionsList.innerHTML = '';
+
+        const allOpts = Array.from(select.options);
+        const matchingOpts = [];
+
+        allOpts.forEach(opt => {
+            const val = (opt.value || '').trim();
+            const text = (opt.textContent || '').trim();
+
+            if (!activeFilterQuery) {
+                matchingOpts.push(opt);
+                return;
+            }
+
+            // Check match against text, value, and any data attributes (such as dataset.client or supplier)
+            let matches = text.toLowerCase().includes(activeFilterQuery) || val.toLowerCase().includes(activeFilterQuery);
+
+            if (!matches && opt.dataset.client) {
+                try {
+                    const c = JSON.parse(opt.dataset.client);
+                    if (c.gstin && c.gstin.toLowerCase().includes(activeFilterQuery)) matches = true;
+                    if (c.city && c.city.toLowerCase().includes(activeFilterQuery)) matches = true;
+                    if (c.state && c.state.toLowerCase().includes(activeFilterQuery)) matches = true;
+                } catch (e) {}
+            }
+            if (!matches && opt.dataset.supplier) {
+                try {
+                    const s = JSON.parse(opt.dataset.supplier);
+                    if (s.gstin && s.gstin.toLowerCase().includes(activeFilterQuery)) matches = true;
+                    if (s.city && s.city.toLowerCase().includes(activeFilterQuery)) matches = true;
+                    if (s.state && s.state.toLowerCase().includes(activeFilterQuery)) matches = true;
+                } catch (e) {}
+            }
+
+            if (matches) matchingOpts.push(opt);
+        });
+
+        clearBtn.style.display = activeFilterQuery ? 'block' : 'none';
+        countBadge.textContent = `${matchingOpts.length} of ${allOpts.length} items`;
+
+        if (matchingOpts.length === 0) {
+            optionsList.innerHTML = `<div class="searchable-no-options">No options matching "${escapeHtml(query)}"</div>`;
+            return;
+        }
+
+        matchingOpts.forEach((opt, idx) => {
+            const item = document.createElement('div');
+            item.className = 'searchable-select-item';
+            if (idx === 0) item.classList.add('is-active');
+            if (opt.selected) item.classList.add('is-selected');
+            item.dataset.value = opt.value;
+
+            const textSpan = document.createElement('span');
+            textSpan.className = 'searchable-item-text';
+            textSpan.innerHTML = highlightMatch(opt.textContent || (opt.value ? opt.value : 'Select...'), activeFilterQuery);
+            item.appendChild(textSpan);
+
+            if (opt.selected) {
+                const check = document.createElement('span');
+                check.className = 'searchable-check-icon';
+                check.innerHTML = '&#10003;';
+                item.appendChild(check);
+            }
+
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                selectValue(opt.value);
+            });
+
+            optionsList.appendChild(item);
+        });
+    }
+
+    function syncLabel() {
+        const selectedOpt = select.options[select.selectedIndex];
+        if (selectedOpt && selectedOpt.value !== '') {
+            label.textContent = selectedOpt.textContent;
+            label.classList.remove('is-placeholder');
+            label.classList.add('has-value');
+        } else {
+            const firstOpt = select.options[0];
+            label.textContent = firstOpt ? firstOpt.textContent : 'Select...';
+            label.classList.add('is-placeholder');
+            label.classList.remove('has-value');
+        }
+
+        // Update disabled state
+        if (select.disabled) {
+            trigger.classList.add('disabled');
+            trigger.tabIndex = -1;
+        } else {
+            trigger.classList.remove('disabled');
+            trigger.tabIndex = 0;
+        }
+    }
+
+    function selectValue(val) {
+        if (select.value !== val) {
+            select.value = val;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            select.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        syncLabel();
+        closeDropdown();
+        trigger.focus();
+    }
+
+    function openDropdown() {
+        if (select.disabled) return;
+        closeAllSearchableDropdowns();
+
+        // Calculate if we need to open upwards
+        const rect = wrap.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 280 && rect.top > 280) {
+            wrap.classList.add('open-upwards');
+        } else {
+            wrap.classList.remove('open-upwards');
+        }
+
+        wrap.classList.add('is-open');
+        dropdown.style.display = 'flex';
+        trigger.setAttribute('aria-expanded', 'true');
+
+        searchInput.value = '';
+        renderOptions('');
+        setTimeout(() => {
+            searchInput.focus();
+            searchInput.select();
+        }, 10);
+    }
+
+    function closeDropdown() {
+        wrap.classList.remove('is-open');
+        dropdown.style.display = 'none';
+        trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    // Trigger events
+    trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (wrap.classList.contains('is-open')) {
+            closeDropdown();
+        } else {
+            openDropdown();
+        }
+    });
+
+    trigger.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            openDropdown();
+        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            openDropdown();
+            searchInput.value = e.key;
+            renderOptions(e.key);
+        }
+    });
+
+    // Search Input events
+    searchInput.addEventListener('input', () => {
+        renderOptions(searchInput.value);
+    });
+
+    clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        searchInput.value = '';
+        renderOptions('');
+        searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+        const items = Array.from(optionsList.querySelectorAll('.searchable-select-item'));
+        const activeIdx = items.findIndex(i => i.classList.contains('is-active'));
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (items.length > 0) {
+                const nextIdx = activeIdx < items.length - 1 ? activeIdx + 1 : 0;
+                items.forEach(i => i.classList.remove('is-active'));
+                items[nextIdx].classList.add('is-active');
+                items[nextIdx].scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (items.length > 0) {
+                const prevIdx = activeIdx > 0 ? activeIdx - 1 : items.length - 1;
+                items.forEach(i => i.classList.remove('is-active'));
+                items[prevIdx].classList.add('is-active');
+                items[prevIdx].scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const activeItem = items[activeIdx >= 0 ? activeIdx : 0];
+            if (activeItem && activeItem.dataset.value !== undefined) {
+                selectValue(activeItem.dataset.value);
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeDropdown();
+            trigger.focus();
+        } else if (e.key === 'Tab') {
+            closeDropdown();
+        }
+    });
+
+    // Sync on native change event
+    select.addEventListener('change', syncLabel);
+
+    // Intercept property descriptor for select.value
+    const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    if (desc && desc.set) {
+        Object.defineProperty(select, 'value', {
+            get() {
+                return desc.get.call(this);
+            },
+            set(val) {
+                desc.set.call(this, val);
+                syncLabel();
+            },
+            configurable: true
+        });
+    }
+
+    // Observer for dynamic option additions/removals
+    const observer = new MutationObserver(() => {
+        renderOptions(searchInput.value);
+        syncLabel();
+    });
+    observer.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['selected'] });
+
+    // Handle form reset
+    if (select.form) {
+        select.form.addEventListener('reset', () => {
+            setTimeout(syncLabel, 10);
+        });
+    }
+
+    // Initial render & sync
+    renderOptions('');
+    syncLabel();
+
+    const instance = {
+        wrap,
+        select,
+        sync: () => {
+            renderOptions(searchInput.value);
+            syncLabel();
+        },
+        destroy: () => {
+            observer.disconnect();
+            wrap.remove();
+            select.style.cssText = '';
+            delete select.dataset.searchableInitialized;
+            searchableSelectInstances.delete(select);
+        }
+    };
+
+    searchableSelectInstances.set(select, instance);
+    return instance;
+}
+
+function initAllSearchableDropdowns() {
+    document.querySelectorAll('select').forEach(sel => {
+        makeSearchableSelect(sel);
+    });
+}
+
+function syncAllSearchableDropdowns() {
+    searchableSelectInstances.forEach(inst => {
+        inst.sync();
+    });
+}
+
+// ==========================================================
 // SEARCHABLE COMBOBOX COMPONENT FOR INVOICES & PURCHASES
 // ==========================================================
 function closeAllComboboxes() {
     document.querySelectorAll('.combobox-menu').forEach(menu => {
         menu.style.display = 'none';
     });
+    closeAllSearchableDropdowns();
 }
 
 function setupProductCombobox(container, mode, onSelectCallback) {
@@ -2528,6 +2948,8 @@ async function resetData() {
 
 function closeAllModals() {
     document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+    closeAllComboboxes();
+    closeAllSearchableDropdowns();
     editingInvoiceId = null;
     editingPurchaseId = null;
     editingProductId = null;
@@ -3294,3 +3716,7 @@ window.closeInvoicePreviewModal = closeInvoicePreviewModal;
 window.setLogoImage = setLogoImage;
 window.getLiveFormatSettings = getLiveFormatSettings;
 window.numberToWords = numberToWords;
+window.makeSearchableSelect = makeSearchableSelect;
+window.initAllSearchableDropdowns = initAllSearchableDropdowns;
+window.syncAllSearchableDropdowns = syncAllSearchableDropdowns;
+window.closeAllSearchableDropdowns = closeAllSearchableDropdowns;

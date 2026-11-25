@@ -546,6 +546,43 @@ function createWindow() {
               checks.push({ name: 'Logo removal resets state & UI cleanly', passed: !!logoCleared });
             }
 
+            // 12. Universal Searchable Select / Dropdown Engine
+            const allSelects = document.querySelectorAll('select');
+            const allWraps = document.querySelectorAll('.searchable-select-wrap');
+            checks.push({
+              name: 'Searchable wrappers initialized for all dropdowns',
+              passed: allWraps.length >= 10 && allWraps.length >= allSelects.length,
+              actual: 'Wraps: ' + allWraps.length + ', Selects: ' + allSelects.length
+            });
+
+            // Test searching in State / Place of Supply dropdown
+            const posSelect = document.getElementById('placeOfSupply');
+            const posWrap = document.querySelector('.searchable-select-wrap[data-for-select="placeOfSupply"]');
+            if (posSelect && posWrap) {
+              const trigger = posWrap.querySelector('.searchable-select-trigger');
+              trigger.click();
+              const searchInput = posWrap.querySelector('.searchable-search-input');
+              const isMenuOpen = posWrap.classList.contains('is-open');
+              checks.push({ name: 'Dropdown menu opens on trigger click', passed: isMenuOpen });
+
+              if (searchInput) {
+                searchInput.value = 'Maha';
+                searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                const items = posWrap.querySelectorAll('.searchable-select-item');
+                const hasMaharashtra = Array.from(items).some(item => item.textContent.includes('Maharashtra'));
+                checks.push({ name: 'Search filter works in dropdown (typing "Maha")', passed: hasMaharashtra && items.length < 5 });
+
+                const firstItem = items[0];
+                if (firstItem) {
+                  firstItem.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                  checks.push({ name: 'Selecting filtered item updates native select value', passed: posSelect.value === 'Maharashtra' });
+                }
+              }
+
+              // Verify dropdown closed after selection
+              checks.push({ name: 'Dropdown closes automatically after option selection', passed: !posWrap.classList.contains('is-open') });
+            }
+
             return checks;
           })()
         `);
